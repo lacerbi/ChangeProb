@@ -82,7 +82,7 @@ if ~isempty(data)
 
 else
     %% Create fake dataset
-    NumTrials = 80;
+    NumTrials = 800;
     sigma_s = 10;
     if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = 5.68; end
     if isempty(sigma_criterion) || ~isfinite(sigma_criterion); sigma_criterion = sigma_ellipse; end
@@ -141,9 +141,8 @@ for t = 1:NumTrials
     [post,Psi,pi_post] = bayesianOCPDupdate(X(t),C(t),post,Psi,Tmat,H,p_vec3,mu,sigma,t);
     tt = nansum(post,2);        
 
-    % If the posterior is about the next trial, this should be t+1?
-    P(t,:) = pi_post;
-    %P(t+1,:) = pi_post;
+    % The predictive posterior is about the next trial
+    P(t+1,:) = pi_post;
     last(t,:) = tt/sum(tt);
 end
 
@@ -224,11 +223,6 @@ end
 function [post,Psi,pi_post] = bayesianOCPDupdate(x,C,post,Psi,Tmat,H,p_vec,mu,sigma,t)
 %BAYESIANCPDUPDATE Bayesian online changepoint detection update
 
-    % This FLAG sets how the algorithm performs some computations.
-    % The correct way should be FLAG=0 but the algorithm performs better 
-    % with FLAG=1, which suggests something might be off.
-    flag = 0;
-
     %pxc1 = normpdf(x, -mu, sigma);
     %pxc2 = normpdf(x, mu, sigma);
 
@@ -239,53 +233,48 @@ function [post,Psi,pi_post] = bayesianOCPDupdate(x,C,post,Psi,Tmat,H,p_vec,mu,si
     % Slice with nonzero hazard function (probability of change)
     idxrange = (size(post,1)-L+1:size(post,1));
     
-    % 3. Evaluate predictive probability
+    % 3. Compute normalization for posterior over states
     pi_post = bsxfun(@times, Psi, Tmat);                    % Posterior over pi_i
-    pi_post = bsxfun(@rdivide, pi_post, sum(pi_post,3));
+    K = sum(pi_post,3);
+    
+    % 4. Evaluate predictive probability
+    pi_post = bsxfun(@rdivide, pi_post, K);                 % Normalize
     predC(:,:) = sum(bsxfun(@times, pi_post, p_vec),3);     % Predictive probability
     if C ~= 1; predC = 1-predC; end
         
-    % 3b. Multiply posterior by predictive probability
+    % 4b. Multiply posterior by predictive probability
     post = bsxfun(@times, post, predC);
     
-    % 4. Calculate Changepoint Probabilities
-    
-    % Slice out trials where change is possible
-    slice = post(idxrange,:);
+    % 5. Calculate Changepoint Probabilities    
+    slice = post(idxrange,:);   % Slice out trials where change is possible
         
     % Posterior over pi_{t-1} that will become posterior over xi_t
-    if flag
-        currenttrial = nansum(sum(bsxfun(@times, ...
-            bsxfun(@times, slice, H), ...
-            Psi(idxrange,1,:)),2),1);
-    else
-        currenttrial = nansum(sum(bsxfun(@times,bsxfun(@times, ...
-            bsxfun(@times, slice, H), ...
-            Psi(idxrange,1,:)),Tmat),2),1);
-    end
+    currenttrial = nansum(sum(bsxfun(@rdivide,bsxfun(@times,bsxfun(@times, ...
+        bsxfun(@times, slice, H), ...
+        Psi(idxrange,1,:)),Tmat),K(idxrange,:)),2),1);
     
-    % 5. Calculate growth probabilities    
+    % 6. Calculate growth probabilities    
     post(idxrange,:) = bsxfun(@times, slice, 1-H); 
     
+    % Shift posterior by one step
     post = circshift(post,1,1);
     post(1,:) = currenttrial;
     post(isnan(post)) = 0;
     
-    % 6. Calculate normalization
+    % 7. Calculate normalization
     Z = sum(post(:));
     
-    % 7. Normalize posterior
+    % 8. Normalize posterior
     post = post ./ Z;
 
-    % 8. Update sufficient statistics
+    % 9. Update sufficient statistics
     Psi = circshift(Psi,1,1);
-    if flag; Psi(1,1,:) = 1; end
     if C == 1
         Psi = bsxfun(@times, Psi, p_vec);
     else
         Psi = bsxfun(@times, Psi, 1 - p_vec);
     end
-    if ~flag; Psi(1,1,:) = 1; end
+    Psi(1,1,:) = 1;
     Psi = bsxfun(@rdivide, Psi, sum(Psi,3));
     
     % Compute marginalized posterior over pi_t
