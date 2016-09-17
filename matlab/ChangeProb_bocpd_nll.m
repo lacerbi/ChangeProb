@@ -232,28 +232,37 @@ function [post,Psi,pi_post] = bayesianOCPDupdate(x,C,post,Psi,Tmat,H,p_vec,mu,si
     L = size(H,1);  % Width of prior over run lengths
     % Slice with nonzero hazard function (probability of change)
     idxrange = (size(post,1)-L+1:size(post,1));
-    
-    % 3. Compute normalization for posterior over states
-    pi_post = bsxfun(@times, Psi, Tmat);                    % Posterior over pi_i
-    K = sum(pi_post,3);
-    
-    % 4. Evaluate predictive probability
-    pi_post = bsxfun(@rdivide, pi_post, K);                 % Normalize
-    predC(:,:) = sum(bsxfun(@times, pi_post, p_vec),3);     % Predictive probability
-    if C ~= 1; predC = 1-predC; end
         
-    % 4b. Multiply posterior by predictive probability
-    post = bsxfun(@times, post, predC);
+    %----------------------------------------------------------------------
+    % 3a. Evaluate predictive probability
+    pi_post = bsxfun(@times, Psi, Tmat);    % Posterior over pi_i before observing C_t
+    predCatA(:,:) = sum(bsxfun(@times, pi_post, p_vec),3);
+    predCatB(:,:) = sum(bsxfun(@times, pi_post, 1 - p_vec),3);
+    if C == 1
+        predCat = predCatA ./ (predCatA + predCatB);
+    else
+        predCat = predCatB ./ (predCatA + predCatB);            
+    end    
     
-    % 5. Calculate Changepoint Probabilities    
+    % 3b. Multiply posterior by predictive probability
+    post = bsxfun(@times, post, predCat);
+        
+    % 3c. Evaluate posterior probability over state (only for relevant range)
+    if C == 1
+        pi_postC = bsxfun(@times, pi_post(idxrange,:,:), p_vec);
+    else
+        pi_postC = bsxfun(@times, pi_post(idxrange,:,:), 1-p_vec);
+    end
+    pi_postC = bsxfun(@rdivide, pi_postC, sum(pi_postC,3));
+
+    %----------------------------------------------------------------------    
+    % 4a. Calculate unnormalized changepoint probabilities
     slice = post(idxrange,:);   % Slice out trials where change is possible
-        
-    % Posterior over pi_{t-1} that will become posterior over xi_t
-    currenttrial = nansum(sum(bsxfun(@rdivide,bsxfun(@times,bsxfun(@times, ...
-        bsxfun(@times, slice, H), ...
-        Psi(idxrange,1,:)),Tmat),K(idxrange,:)),2),1);
+    currenttrial = nansum( ...
+        bsxfun(@times, sum(bsxfun(@times, slice, pi_postC),2), H), ...
+        1);
     
-    % 6. Calculate growth probabilities    
+    % 4b. Calculate unnormalized growth probabilities    
     post(idxrange,:) = bsxfun(@times, slice, 1-H); 
     
     % Shift posterior by one step
@@ -261,13 +270,14 @@ function [post,Psi,pi_post] = bayesianOCPDupdate(x,C,post,Psi,Tmat,H,p_vec,mu,si
     post(1,:) = currenttrial;
     post(isnan(post)) = 0;
     
-    % 7. Calculate normalization
+    % 4c. Calculate normalization
     Z = sum(post(:));
     
-    % 8. Normalize posterior
+    % 4d. Normalize posterior
     post = post ./ Z;
-
-    % 9. Update sufficient statistics
+    
+    %----------------------------------------------------------------------
+    % 5a. Update sufficient statistics
     Psi = circshift(Psi,1,1);
     if C == 1
         Psi = bsxfun(@times, Psi, p_vec);
@@ -277,7 +287,7 @@ function [post,Psi,pi_post] = bayesianOCPDupdate(x,C,post,Psi,Tmat,H,p_vec,mu,si
     Psi(1,1,:) = 1;
     Psi = bsxfun(@rdivide, Psi, sum(Psi,3));
     
-    % Compute marginalized posterior over pi_t
+    % 5b. Store predictive posterior over pi_t
     pi_post = nansum(sum(bsxfun(@times,bsxfun(@times, Psi, Tmat), post),2),1);
     pi_post = pi_post / sum(pi_post);
 
