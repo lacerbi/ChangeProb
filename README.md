@@ -4,5 +4,4 @@ Project repository for *The Effect Changing Probabilities has on Trial-by-trial 
 
 ### To-do list
 
-- Check derivation and implementation of the Bayesian online changepoint detection observer
-- Derive and implement prediction for the *covert*-criterion task
+- Check derivation and implement prediction for the *covert*-criterion task
