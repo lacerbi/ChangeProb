@@ -58,7 +58,7 @@ ng = max(subgrid(:));
 
 % Parse inputs
 if numel(varargin) >= argidx0
-    varargin(argidx0:end)
+    % varargin(argidx0:end)
     options = parseoptions(options,varargin{argidx0:end});
 end
 
