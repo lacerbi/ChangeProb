@@ -4,4 +4,4 @@ Project repository for *The Effect Changing Probabilities has on Trial-by-trial 
 
 ### To-do list
 
-- Check derivation and implement prediction for the *covert*-criterion task
+- Check derivation and implementation of the *covert*-criterion task
