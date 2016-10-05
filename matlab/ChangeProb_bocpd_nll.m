@@ -91,7 +91,7 @@ if ~isempty(data)
     % Get task-relevant responses
     switch task
         case 1  % Overt-criterion task    
-            beta_resp = data.Criterion(:,col) - mu_bar;   % Reported criterion
+            z_resp = data.Criterion(:,col) - mu_bar;   % Reported criterion
         case 2  % Covert-criterion task
             Chat = data.Response(:,col) == 2;
     end
@@ -118,7 +118,7 @@ else
     % Generate stimuli based on category labels
     S = mu(C)' + sigma_s*randn(NumTrials,1);
     
-    beta_resp = zeros(NumTrials,1);
+    z_resp = zeros(NumTrials,1);
     Chat = NaN(NumTrials,1);
 end
 
@@ -182,16 +182,16 @@ switch task
         
         % Compute predicted criterion for the overt task
         Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
-        beta_opt = sigma^2 * log(Gamma_t) / diff(mu);
+        z_opt = sigma^2 * log(Gamma_t) / diff(mu);
 
         % Log probability of overt task responses
-        log_Pbeta = -0.5*log(2*pi*sigma_criterion) - 0.5*((beta_resp-beta_opt(1:NumTrials))./sigma_criterion).^2;
+        log_Pz = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp-z_opt(1:NumTrials))./sigma_criterion).^2;
         if lambda > 0
-            log_Pbeta = log(lambda/360 + (1-lambda)*exp(log_Pbeta));    
+            log_Pz = log(lambda/360 + (1-lambda)*exp(log_Pz));    
         end
 
         % Sum negative log likelihood
-        nLL = -nansum(log_Pbeta);
+        nLL = -nansum(log_Pz);
         
     case 2  % Covert-criterion task
         
@@ -256,13 +256,13 @@ if do_plot
     switch task
         case 1
             % Smoothen responded criterion for visualization
-            beta_smooth = smooth(beta_resp,11);
+            z_smooth = smooth(z_resp,11);
             
             if ~isempty(data)
-                scatter(1:NumTrials,beta_resp,'k.'); hold on;
-                plot(1:NumTrials,beta_smooth,'k','LineWidth',2); hold on;
+                scatter(1:NumTrials,z_resp,'k.'); hold on;
+                plot(1:NumTrials,z_smooth,'k','LineWidth',2); hold on;
             end
-            plot(1:NumTrials,beta_opt(1:NumTrials),'r','LineWidth',2);
+            plot(1:NumTrials,z_opt(1:NumTrials),'r','LineWidth',2);
             ylabel('Criterion');
             ylim([-50 120]);
             set(gca,'YTick',[-50,0,50]);
