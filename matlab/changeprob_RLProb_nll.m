@@ -87,7 +87,7 @@ switch task
 end
 
 for t = 2:NumTrials
-    if score(t) == 0
+    if score(t-1) == 0
         p_estimate(t,:) = p_estimate(t-1,:) + alpha*(C(t-1)-p_estimate(t-1,:));
     else
         p_estimate(t,:) = p_estimate(t-1,:);
