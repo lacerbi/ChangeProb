@@ -1,4 +1,4 @@
-function [nLL, rmse, p_estimate, p_true, resp_model, resp_obs] = changeprob_exp_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, task)
+function [nLL, rmse, p_estimate, resp_model] = changeprob_exp_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, task)
 %CHANGEPROB_EXP_NLL Exponentially weight-moving average observer.
 % (Documentation to be written.)
 %
@@ -7,8 +7,8 @@ function [nLL, rmse, p_estimate, p_true, resp_model, resp_obs] = changeprob_exp_
 % Date:     Oct/11/2016
 
 % Parameter vector:
-% #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is ALPHA, #4 is W, and
-% #5 is lapse
+% #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, #4 is GAMMA,
+% #5 is ALPHA, and #6 is W
 if nargin < 1; parameters = []; ...
         [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(); task = 1; end
 
@@ -28,7 +28,7 @@ switch task
         Chat = resp_obs;
 end
 
-% Define parameters
+% Observer model parameters
 
 switch numel(parameters)
     case 0
@@ -40,7 +40,6 @@ switch numel(parameters)
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
-        gamma = parameters(4);
         alpha = parameters(5);
         w = parameters(6);
     otherwise

@@ -98,15 +98,15 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     % Lower and upper parameter bounds
     if nargin < 5 || isempty(paramBounds)
         paramBounds = zeros(NumParams, 2);
-        for qq = 1:NumParams
-            if or(I_params(qq) == 1, I_params(qq) == 2)
-                paramBounds(qq,:) = [1, 30];
-            elseif I_params(qq) == 3
-                paramBounds(qq,:) = [0, .1];
-            elseif I_params(qq) == 4
-                paramBounds(qq,:) = [-Inf, Inf];
+        for u = 1:NumParams
+            if or(I_params(u) == 1, I_params(u) == 2)
+                paramBounds(u,:) = [1, 30];
+            elseif I_params(u) == 3
+                paramBounds(u,:) = [0, .1];
+            elseif I_params(u) == 4
+                paramBounds(u,:) = [-Inf, Inf];
             else
-                paramBounds(qq,:) = [0, 1];
+                paramBounds(u,:) = [0, 1];
             end
         end
     end
@@ -122,22 +122,22 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     
     %% Observer model parameters
     
-    for pp = 1:NumParams
-        if or(I_params(pp) == 1, I_params(pp) == 2)
-            sigma_noise = log(linspace(paramBounds(pp,1), paramBounds(pp,2)), gridSize(pp));
-            params2fit(pp,:) = sigma_noise;
-        elseif I_params(pp) == 3
-            lambda = linspace(paramBounds(pp,1), paramBounds(pp,2), gridSize(pp));
-            params2fit(pp,:) = lambda;
-        elseif I_params(pp) == 4
-            gamma = linspace(paramBounds(pp,1), paramBounds(pp,2), gridSize(pp));
-            params2fit(pp,:) = gamma;
-        elseif I_params(pp) == 5
-            alpha = linspace(paramBounds(pp,1), paramBounds(pp,2), gridSize(pp));
-            params2fit(pp,:) = alpha;
+    for uu = 1:NumParams
+        if or(I_params(uu) == 1, I_params(uu) == 2)
+            sigma_noise = log(linspace(paramBounds(uu,1), paramBounds(uu,2)), gridSize(uu));
+            params2fit(uu,:) = sigma_noise;
+        elseif I_params(uu) == 3
+            lambda = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
+            params2fit(uu,:) = lambda;
+        elseif I_params(uu) == 4
+            gamma = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
+            params2fit(uu,:) = gamma;
+        elseif I_params(uu) == 5
+            alpha = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
+            params2fit(uu,:) = alpha;
         else
-            w = linspace(paramBounds(pp,1), paramBounds(pp,2), gridSize(pp));
-            params2fit(pp,:) = w;
+            w = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
+            params2fit(uu,:) = w;
         end
     end
     
@@ -205,9 +205,9 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     I_notFit = find(parameters == 0);
     for v = 1:numel(I_notFit)
         if I_notFit(v) == 1
-            inputParams(1) = sigma_ellipse; % Use calibration data for default sigma_criterion
+            inputParams(1) = log(sigma_ellipse); % Use calibration data for default sigma_criterion
         elseif I_notFit(v) == 2
-            inputParams(2) = 5; % Default sigma_criterion
+            inputParams(2) = log(5); % Default sigma_criterion
         elseif I_notFit(v) == 3
             inputParams(3) = 0; % Default lapse
         elseif I_notFit(v) == 4
@@ -231,64 +231,81 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     end
     minParams = min(multParams);
     maxParams = max(multParams);
-    prior = prior/(trapz(prior)*(maxParams-minParams)/(numel(prior)-1));
+    prior = prior/(qtrapz(prior)*(maxParams-minParams)/(numel(prior)-1));
     prior = log(prior);
 
     %% Compute the negative log likelihood for all parameter sets
 
     switch NumParams
         case 1
-            for ii = 1:numel(params2fit(1,:))
-                inputParams(I_params) = Grid(ii);
-                if model == 1 
-                    [nLL(ii),post{ii},P,p_true(,:ii),C(:,ii),last,rmse(ii)] = changeprob_bocpd_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task);
-                    
-                
-                
-
-    if model == 2 || model == 3 || model == 6
-        nLL_mat = zeros(numel(alpha), numel(sigma_noise));
-        rmse_mat = zeros(numel(alpha), numel(sigma_noise));
-        resp_model_mat = cell(size(Grid));
-        p_estimate_mat = cell(size(Grid));
-        for ii = 1:numel(alpha)
-            for jj = 1:numel(sigma_noise)
-                parameters = Grid{ii,jj};
-                parameters(2) = exp(parameters(2));
-                if model == 2 || model == 3
-                    [nLL_mat(ii,jj), resp_model_mat{ii,jj}, rmse_mat(ii,jj), p_estimate_mat{ii,jj}] = changeprob_nLL(parameters);
-                elseif model == 6
-                    [nLL_mat(ii,jj), resp_model_mat{ii,jj}] = changeprob_nLL(parameters);
+            for ii = 1:gridSize(1)
+                inputParams(I_params) = exp(Grid(ii));
+                [nLL_mat(ii), rmse_mat(ii), resp_model_mat(:,ii), p_estimate_mat(:,ii)] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+            end
+        case 2
+            for ii = 1:gridSize(1)
+                for jj = 1:gridSize(2)
+                    inputParams(I_params) = Grid{ii,jj};
+                    if sum(I_params == 1) == 1
+                        inputParams(1) = exp(inputParams(1));
+                    elseif sum(I_params == 2) == 1
+                        inputParams(2) = exp(inputParams(2));
+                    end
+                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
                 end
             end
-        end
-    elseif model == 4 || model == 5
-        nLL_mat = zeros(numel(alpha), numel(sigma_noise), numel(w));
-        rmse_mat = zeros(numel(alpha), numel(sigma_noise), numel(w));
-        resp_model_mat = cell(size(Grid));
-        p_estimate_mat = cell(size(Grid));
-        for ii = 1:numel(alpha)
-            for jj = 1:numel(sigma_noise)
-                for kk = 1:numel(w) 
-                    parameters = Grid{ii,jj,kk};
-                    parameters(2) = exp(parameters(2));
-                    [nLL_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, rmse_mat(ii,jj,kk), p_estimate_mat{ii,jj,kk}] = changeprob_nLL(parameters);
+        case 3
+            for ii = 1:gridSize(1)
+                for jj = 1:gridSize(2)
+                    for kk = 1:gridSize(3)
+                        inputParams(I_params) = Grid{ii,jj,kk};
+                        if sum(I_params == 1) == 1
+                            inputParams(1) = exp(inputParams(1));
+                        elseif sum(I_params == 2) == 1
+                            inputParams(2) = exp(inputParams(2));
+                        end
+                        [nLL_mat(ii,jj,kk), rmse_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, p_estimate_mat{ii,jj,kk}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                    end
+                end
+            end 
+        case 4
+            for ii = 1:gridSize(1)
+                for jj = 1:gridSize(2)
+                    for kk = 1:gridSize(3)
+                        for qq = 1:gridSize(4)
+                            inputParams(I_params) = Grid{ii,jj,kk,qq};
+                            if sum(I_params == 1) == 1
+                                inputParams(1) = exp(inputParams(1));
+                            elseif sum(I_params == 2) == 1
+                                inputParams(2) = exp(inputParams(2));
+                            end
+                            [nLL_mat(ii,jj,kk,qq), rmse_mat(ii,jj,kk,qq), resp_model_mat{ii,jj,kk,qq}, p_estimate_mat{ii,jj,kk,qq}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                        end
+                    end
                 end
             end
-        end
-    elseif model == 1 || model == 7
-        nLL_mat = zeros(numel(sigma_noise), 1);
-        rmse_mat = zeros(numel(sigma_noise), 1);
-        resp_model_mat = zeros(numel(sigma_noise), NumTrials);
-        p_estimate_mat = zeros(numel(sigma_noise), NumTrials);
-        for ii = 1:numel(sigma_noise)
-            parameters = exp(sigma_noise(ii));
-            [nLL_mat(ii), resp_model_mat(ii,:), rmse_mat(ii), p_estimate_mat(ii,:)] = changeprob_nLL(parameters);
-        end
+        case 5
+            for ii = 1:gridSize(1)
+                for jj = 1:gridSize(2)
+                    for kk = 1:gridSize(3)
+                        for qq = 1:gridSize(4)
+                            for pp = 1:gridSize(5)
+                                inputParams(I_params) = Grid{ii,jj,kk,qq,pp};
+                                if sum(I_params == 1) == 1
+                                    inputParams(1) = exp(inputParams(1));
+                                elseif sum(I_params == 2) == 1
+                                    inputParams(2) = exp(inputParams(2));
+                                end
+                                [nLL_mat(ii,jj,kk,qq,pp), rmse_mat(ii,jj,kk,qq,pp), resp_model_mat{ii,jj,kk,qq,pp}, p_estimate_mat{ii,jj,kk,qq,pp}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                            end
+                        end
+                    end
+                end
+            end
     end
 
     %% Compute the model posterior
-    switch numel(parameters)
+    switch NumParams
         case 1
             % Add the log likelihood to the log prior, subtract the max, and
             % exponentiate
@@ -296,7 +313,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             modelPost = exp(modelPost-max(modelPost(:)));
 
             % Intergrate across model parameter
-            marginalLikelihood = trapz(modelPost);
+            marginalLikelihood = qtrapz(modelPost);
 
             % Find the best fitting parameter (MAP)
             [~, I] = max(modelPost);
@@ -316,7 +333,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             modelPost = exp(modelPost - max(modelPost(:)));
 
             % Integrate across parameters
-            marginalLikelihood = trapz(trapz(modelPost));
+            marginalLikelihood = qtrapz(qtrapz(modelPost));
 
             % Find best fitting parameters (MAP)
             [~, I] = max(modelPost(:));
@@ -339,7 +356,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             modelPost = exp(modelPost - max(modelPost(:)));
 
             % Integrate across parameters
-            marginalLikelihood = trapz(trapz(trapz(modelPost)));
+            marginalLikelihood = qtrapz(qtrapz(qtrapz(modelPost)));
 
             % Find best fitting parameters (MAP)
             [~, I] = max(modelPost(:));
