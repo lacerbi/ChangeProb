@@ -1,4 +1,4 @@
-function [NumTrials, sigma_ellipse, sigma_criterion, mu, sigma, C, S, p_true, resp, score] = changeprob_getSessionParameters(data, task, parameters)
+function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = changeprob_getSessionParameters(data, task, parameters)
 %CHANGEPROB_GETSESSIONPARAMETERS Gets session parameters from an existing
 %data struct or creates a fake dataset
 
@@ -6,15 +6,12 @@ function [NumTrials, sigma_ellipse, sigma_criterion, mu, sigma, C, S, p_true, re
         % data
             % Experimental data struct to be decomposed
         % task: 1 - overt (default), 2 - covert
-        % parameters
+        % parameters used to generate fake data
             % parameters(1): sensory noise (sigma_ellipse)
             % parameters(2): adjustment noise (sigma_criterion)
-            % parameters(3): lapse rate (lambda)
-            % parameters(4): gamma
-            % parameters(5): smoothing factor / learning rate (alpha)
-            % parameters(6): bias weight (w)
 %   OUTPUT:
         % NumTrials: total number of trials
+        % sigma_ellipse: sensory noise from calibration data
         % mu: vector containing the category means [muA, muB]
         % sigma: std dev of the internal distributions - sqrt(sigma_s^2 +
         % sigma_v^2)
@@ -26,7 +23,7 @@ function [NumTrials, sigma_ellipse, sigma_criterion, mu, sigma, C, S, p_true, re
         % score: 0 - wrong, 1 - correct
         
 %   Author: Elyse Norton
-%   Date: 10/6/16
+%   Date: 10/18/16
 %   email: elyse.norton@gmail.com
         
     switch nargin
@@ -40,41 +37,16 @@ function [NumTrials, sigma_ellipse, sigma_criterion, mu, sigma, C, S, p_true, re
         case 2
             parameters = [];
     end
-    
-    sigma_ellipse = [];     % Default: use SIGMA_ELLIPSE from calibration data
-    sigma_criterion = [];   % Default: use SIGMA_ELLIPSE from calibration data
 
     switch numel(parameters)
-        case 0  % Empty parameter vector
+        case 0  
+            sigma_ellipse = []; % Use calibration data
+            sigma_criterion = []; % Use calibration data
         case 1
             sigma_ellipse = parameters(1);
-        case 2
+        otherwise 
             sigma_ellipse = parameters(1);
             sigma_criterion = parameters(2);
-        case 3
-            sigma_ellipse = parameters(1);
-            sigma_criterion = parameters(2);
-            lambda = parameters(3);
-        case 4
-            sigma_ellipse = parameters(1);
-            sigma_criterion = parameters(2);
-            lambda = parameters(3);
-            gamma = parameters(4);
-        case 5
-            sigma_ellipse = parameters(1);
-            sigma_criterion = parameters(2);
-            lambda = parameters(3);
-            gamma = parameters(4);
-            alpha = parameters(5);
-        case 6
-            sigma_ellipse = parameters(1);
-            sigma_criterion = parameters(2);
-            lambda = parameters(3);
-            gamma = parameters(4);
-            alpha = parameters(5);
-            w = parameters(6);
-        otherwise
-            error('PARAMETERS should be a vector with up to six parameters.');
     end
     
     if ~isempty(data)

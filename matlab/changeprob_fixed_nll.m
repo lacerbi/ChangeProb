@@ -22,7 +22,7 @@ if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt-criterion) or 2 (cov
 if nargin < 4; options = []; end
 
 %% Get session parameters
-[NumTrials, sigma_ellipse, sigma_criterion, mu, sigma, ~, S, p_true, resp_obs] = changeprob_getSessionParameters(data, task, parameters);
+[NumTrials, sigma_ellipse, mu, sigma, ~, S, p_true, resp_obs] = changeprob_getSessionParameters(data, task, parameters);
 
 switch task
     case 1  % Overt-criterion task    
