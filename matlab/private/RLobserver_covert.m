@@ -11,8 +11,8 @@ function [model_resp,log_P] = RLobserver_covert(parameters,sigma,dmu,X,p_initial
 % SCORE: Trial feedback. [Nt,1] (double)
 % 
 % ================ OUTPUT VARIABLES ==================
-% MODEL_RESP: model categorization responses, per trial/sample. [Nt,Ns] (double)
-% LOG_PZ: log likelihood, per trial/sample. [Nt,Ns] (double)
+% MODEL_RESP: model categorization responses probability, per trial/sample. [Nt,Ns] (double)
+% LOG_P: log likelihood, per trial/sample. [Nt,Ns] (double)
 
 [Nt,Ns] = size(X); % # trials and # samples
 
@@ -20,7 +20,7 @@ z_model = zeros(Nt,Ns);
 model_resp = z_model;
 log_P = zeros(Nt,Ns);
 
-lambda = 1e-4; % Minimum lapse to avoid numerical trouble
+lambda = 1e-2; % Minimum lapse to avoid numerical trouble (CHANGED)
 
 for qq = 1:Ns
     x = X(:,qq); % vector of noisy measurements
@@ -32,7 +32,7 @@ for qq = 1:Ns
         model_resp(1,qq) = 0;
     end
     model_resp(1,qq) = lambda/2 + (1-lambda)*model_resp(1,qq);
-    log_P(1,qq) = log(model_resp(1,qq)).*(Chat(1)==1) + log(1-model_resp(1,qq)).*(Chat(1)~=1);
+    log_P(1,qq) = log(model_resp(1,qq)).*(resp_obs(1)==1) + log(1-model_resp(1,qq)).*(resp_obs(1)~=1);
     for t = 2:Nt
         if score(t-1) == 0
             z_model(t,qq) = z_model(t-1,qq) + parameters(2)*(x(t)-z_model(t-1,qq));
@@ -45,6 +45,6 @@ for qq = 1:Ns
             model_resp(t,qq) = 0;
         end
         model_resp(t,qq) = lambda/2 + (1-lambda)*model_resp(t,qq);
-        log_P(t,qq) = log(model_resp(t,qq)).*(Chat(t)==1) + log(1-model_resp(t,qq)).*(Chat(t)~=1);
+        log_P(t,qq) = log(model_resp(t,qq)).*(resp_obs(t)==1) + log(1-model_resp(t,qq)).*(resp_obs(t)~=1);
     end
 end
