@@ -1,10 +1,10 @@
-function [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, task)
+function [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
 %CHANGEPROB_FIXED_NLL Fixed criterion model.
 % (Documentation to be written.)
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Oct/12/2016
+% Date:     Oct/20/2016
 
 % Parameter vector:
 % #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, #4 is GAMMA,
@@ -53,14 +53,14 @@ switch task
     case 1
         log_P = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp-z_model)./sigma_criterion).^2;
         if lambda > 0
-            log_P(:,t) = log(lambda/360 + (1-lambda)*exp(log_P(:,t)));
+            log_P = log(lambda/360 + (1-lambda).*exp(log_P));
         end
-        resp_model = z_resp;
+        resp_model = z_model;
     case 2
         PChatA = 1 - normcdf(S, z_model, sigma_ellipse);
         log_P = log(PChatA).*(Chat==1) + log(1-PChatA).*(Chat==2);
         if lambda > 0
-                PChatA(:,t) = lambda/2 + (1-lambda)*PChatA(:,t);
+                PChatA = lambda/2 + (1-lambda).*PChatA;
         end
         resp_model = PChatA;
 end

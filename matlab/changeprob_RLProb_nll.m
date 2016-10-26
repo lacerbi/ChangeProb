@@ -1,28 +1,25 @@
-function [nLL, rmse, p_estimate, p_true, resp_model, resp_obs] = changeprob_RLProb_nll(parameters, data, task, options)
+function [nLL, rmse, p_estimate, p_true, resp_model, resp_obs] = changeprob_RLProb_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
 %CHANGEPROB_RLProb_NLL Reinforcement-learning model on probability.
 % (Documentation to be written.)
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Oct/12/2016
+% Date:     Oct/20/2016
 
 % Parameter vector:
-% #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE rate, #4 is ALPHA
-if nargin < 1; parameters = []; end
+% #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE rate, #4 is
+% GAMMA, #5 is ALPHA, and #6 is W
+if nargin < 1; parameters = []; ...
+        [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(); task = 1; end
 
 % Data struct or random seed for fake data generation
-if nargin < 2 || isempty(data); data = 0; end
-if isnumeric(data); rng(data); data = []; end
+if nargin < 2; error('You must specify the session parameters.'); end
 
 % Task (1 overt, 2 covert)
-if nargin < 3 || isempty(task); task = 1; end
+if nargin < 9 || isempty(task); task = 1; end
 if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt-criterion) or 2 (covert-criterion).'); end
 
-% Additional options to set experimental constants
-if nargin < 4; options = []; end
-
-%% Get session parameters
-[NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task, parameters);
+%% Define parameters
 
 switch task
     case 1  % Overt-criterion task    
@@ -31,37 +28,22 @@ switch task
         Chat = resp_obs;
 end
 
-% Define parameters
+% observer model parameters
 
 switch numel(parameters)
     case 0
-        lambda = 0;
+        sigma_criterion = 5; % Default sigma_criterion
+        lambda = 0; % Default lapse rate
         alpha = .2; % Defalt smoothing factor
         w = 1; % Default weight on probability estimate
-    case 1
-        lambda = 0;
-        alpha = .2;
-        w = 1;
-    case 2
-        lambda = 0;
-        alpha = .2;
-        w = 1;
-    case 3
-        lambda = parameters(3);
-        alpha = .2;
-        w = 1;
-    case 4
-        lambda = parameters(3);
-        alpha = .2;
-        w = 1;
-    case 5
-        lambda = parameters(3);
-        alpha = parameters(5);
-        w = 1;
     case 6
+        sigma_ellipse = parameters(1);
+        sigma_criterion = parameters(2);
         lambda = parameters(3);
         alpha = parameters(5);
         w = parameters(6);
+    otherwise
+        error('Parameters is a vector with exactly 0 or 6 inputs.');
 end
 
 %% Start loop over trials
@@ -112,7 +94,7 @@ end
 
 switch task
     case 1
-        resp_model = z_resp;
+        resp_model = z_model;
     case 2
         resp_model = PChatA;
 end

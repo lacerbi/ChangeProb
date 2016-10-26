@@ -1,10 +1,10 @@
-function [nLL, rmse, p_estimate, resp_model] = changeprob_exp_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, task)
+function [nLL, rmse, p_estimate, resp_model] = changeprob_exp_nll(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
 %CHANGEPROB_EXP_NLL Exponentially weight-moving average observer.
 % (Documentation to be written.)
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Oct/11/2016
+% Date:     Oct/20/2016
 
 % Parameter vector:
 % #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, #4 is GAMMA,
@@ -51,21 +51,20 @@ end
 p_initial = .5;
 p_bias = .5; % Conservative bias towards a probability of .5 (i.e., neutral criterion)
 z_model = zeros(1,NumTrials);
-PChatA = ones(1,NumTrials);
-log_P = zeros(1,NumTrials);
-beta = zeros(1,NumTrials);
+PChatA = z_model;
+log_P = z_model;
+beta = z_model;
 p_estimate = zeros(NumTrials,1);
-p_conservative = zeros(NumTrials,1);
+p_conservative = p_estimate;
 p_estimate(1,:) = p_initial;
 p_conservative(1,:) = w*p_estimate(1,:) + (1-w)*p_bias;
 beta(1) = p_conservative(1,:)/(1-p_conservative(1,:));
 z_model(:,1) = sigma^2 * log(beta(1)) / diff(mu);
-switch task
-    case 1
-        log_P(:,1) = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp(1)-z_model(:,1))./sigma_criterion).^2;
-    case 2
-        PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
-        log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
+if task == 1
+    log_P(:,1) = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp(1)-z_model(:,1))./sigma_criterion).^2;
+else
+    PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
+    log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
 end
 
 for t = 2:NumTrials
@@ -73,26 +72,24 @@ for t = 2:NumTrials
     p_conservative(t,:) = w*p_estimate(t,:) + (1-w)*p_bias;
     beta(t) = p_conservative(t,:)/(1-p_conservative(t,:));
     z_model(t) = sigma^2 * log(beta(t)) / diff(mu);
-    switch task
-        case 1
-            log_P(:,t) = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp(t)-z_model(:,t))./sigma_criterion).^2;
-            if lambda > 0
-                log_P(:,t) = log(lambda/360 + (1-lambda)*exp(log_P(:,t)));
-            end
-        case 2
-            PChatA(:,t) = 1-normcdf(S(t), z_model(t), sigma_ellipse);
-            if lambda > 0
-                PChatA(:,t) = lambda/2 + (1-lambda)*PChatA(:,t);
-            end
-            log_P(:,t) = log(PChatA(:,t)).*(Chat(t)==1) + log(1-PChatA(:,t)).*(Chat(t)~=1);
+    if task == 1
+        log_P(:,t) = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp(t)-z_model(:,t))./sigma_criterion).^2;
+        if lambda > 0
+            log_P(:,t) = log(lambda/360 + (1-lambda)*exp(log_P(:,t)));
+        end
+    else
+        PChatA(:,t) = 1-normcdf(S(t), z_model(t), sigma_ellipse);
+        if lambda > 0
+            PChatA(:,t) = lambda/2 + (1-lambda)*PChatA(:,t);
+        end
+        log_P(:,t) = log(PChatA(:,t)).*(Chat(t)==1) + log(1-PChatA(:,t)).*(Chat(t)~=1);
     end
 end
 
-switch task
-    case 1
-        resp_model = z_resp;
-    case 2
-        resp_model = PChatA;
+if task == 1
+    resp_model = z_model;
+else
+    resp_model = PChatA;
 end
 
 nLL = -nansum(log_P);

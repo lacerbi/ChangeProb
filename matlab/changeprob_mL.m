@@ -16,8 +16,6 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             % 'exponential'
             % 'RL_probability'
             % 'RL_criterion'
-            % 'exponential_conservative'
-            % 'RL_probability_conservative'
         % data: data struct from changing probability experiment
         % task: lets you choose which task to fit
             % 1 - overt-criterion task
@@ -46,12 +44,12 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     
     % Author:   Elyse norton
     % Email:    elyse.norton@gmail.com
-    % Date:     10/17/2016
-    
+    % Date:     10/20/2016
+    tic
     % Model to be fit
     if nargin < 1; error('Please indicate the model you want to fit.'); end
     potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ...
-        'RL_criterion', 'exponential_conservative', 'RL_probability_conservative'};
+        'RL_criterion'};
     model = find(strcmp(model, potentialModels)); % recode model to numeric value
     
     % Data struct or random seed for fake data generation
@@ -68,35 +66,39 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             case 1
                 if model < 3
                     parameters = [0 1 0 0 0 0];
-                elseif and(model < 6, model > 2)
-                    parameters = [0 1 0 0 1 0];
                 else
-                    parameters = [0 1 0 0 1 1];
+                    parameters = [0 1 0 0 1 0];
                 end
             case 2
                 if model < 3
                     parameters = [1 0 0 0 0 0];
-                elseif and(model < 6, model > 2)
-                    parameters = [1 0 0 0 1 0];
                 else
-                    parameters = [1 0 0 0 1 1];
+                    parameters = [1 0 0 0 1 0];
                 end
+        end
+        if nargin < 4
+            gridSize = [];
+            paramBounds = [];
         end
     elseif sum(parameters) == 0
         error('You must specify at least one parameter to fit.')
     end
     
+    paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w'};
     NumParams = sum(parameters);
-    I_params = find(parameters == 1);
+    I_params = find(parameters ~= 0);
     % Sampling rate of parameter grid
-    if nargin < 4 || isempty(gridSize)
+    if nargin < 5 || isempty(gridSize)
         gridSize = zeros(1, NumParams) + 100; % Default grid is 100 x 100
+        if nargin < 5
+            paramBounds = [];
+        end
     elseif numel(gridSize) ~= NumParams
         error('Matrix dimensions do not agree. numel(gridSize) must equal sum(parameters).');
     end
     
     % Lower and upper parameter bounds
-    if nargin < 5 || isempty(paramBounds)
+    if nargin < 6 || isempty(paramBounds)
         paramBounds = zeros(NumParams, 2);
         for u = 1:NumParams
             if or(I_params(u) == 1, I_params(u) == 2)
@@ -111,33 +113,28 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
         end
     end
     
-    if NumParams ~= size(ParamBounds,2)
+    if NumParams ~= size(paramBounds,1)
         error('Please specify parameter bounds for each parameter to be fit.');
     end
     
     do_plot = nargout == 0; % If no outputs, make a plot
     
     %% Get session parameters
-    [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(data, task);
+    [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
     
     %% Observer model parameters
-    
+    params2fit = zeros(NumParams, gridSize(1));
     for uu = 1:NumParams
         if or(I_params(uu) == 1, I_params(uu) == 2)
-            sigma_noise = log(linspace(paramBounds(uu,1), paramBounds(uu,2)), gridSize(uu));
-            params2fit(uu,:) = sigma_noise;
+            params2fit(uu,:) = log(linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu))); % sigma_noise
         elseif I_params(uu) == 3
-            lambda = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
-            params2fit(uu,:) = lambda;
+            params2fit(uu,:) = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu)); % lambda
         elseif I_params(uu) == 4
-            gamma = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
-            params2fit(uu,:) = gamma;
+            params2fit(uu,:) = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu)); % gamma
         elseif I_params(uu) == 5
-            alpha = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
-            params2fit(uu,:) = alpha;
+            params2fit(uu,:) = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu)); % alpha
         else
-            w = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu));
-            params2fit(uu,:) = w;
+            params2fit(uu,:) = linspace(paramBounds(uu,1), paramBounds(uu,2), gridSize(uu)); % w
         end
     end
     
@@ -174,7 +171,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                 for j = 1:gridSize(2)
                     for k = 1:gridSize(3)
                         for q = 1:gridSize(4)
-                            Grid{i,j,k, q} = [firstParam(i), secondParam(j), thirdParam(k), fourthParam(q)];
+                            Grid{i,j,k,q} = [firstParam(i), secondParam(j), thirdParam(k), fourthParam(q)];
                         end
                     end
                 end
@@ -205,17 +202,17 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     I_notFit = find(parameters == 0);
     for v = 1:numel(I_notFit)
         if I_notFit(v) == 1
-            inputParams(1) = log(sigma_ellipse); % Use calibration data for default sigma_criterion
+            inputParams(1) = sigma_ellipse; % Use calibration data for default sigma_criterion
         elseif I_notFit(v) == 2
-            inputParams(2) = log(5); % Default sigma_criterion
+            inputParams(2) = 5; % Default sigma_criterion
         elseif I_notFit(v) == 3
-            inputParams(3) = 0; % Default lapse
+            inputParams(3) = 0; % Default lapse (i.e., no lapse)
         elseif I_notFit(v) == 4
-            inputParams(4) = Inf;
+            inputParams(4) = Inf; % Default gamma
         elseif I_notFit(v) == 5
-            inputParams(5) = .2;
+            inputParams(5) = .2; % Default alpha
         elseif I_notFit(v) == 6
-            inputParams(6) = 1;
+            inputParams(6) = 1; % Default w (i.e., no bias)
         end
     end
 
@@ -224,10 +221,10 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
         % sigma parameters
     prior = ones(1, gridSize(1));
     multParams = ones(1, gridSize(1));
-    for kk = 1:NumParams
-        prior = unifpdf(params2fit(kk,:), min(params2fit(kk,:)), max(params2fit(kk,:)));
+    for vv = 1:NumParams
+        prior = unifpdf(params2fit(vv,:), min(params2fit(vv,:)), max(params2fit(vv,:)));
         prior = prior.*prior;
-        multParams = multParams.*params2fit(kk,:);
+        multParams = multParams.*params2fit(vv,:);
     end
     minParams = min(multParams);
     maxParams = max(multParams);
@@ -238,11 +235,19 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
     switch NumParams
         case 1
+            nLL_mat = zeros(1,gridSize(1));
+            rmse_mat = nLL_mat;
+            resp_model_mat = zeros(NumTrials, gridSize(1));
+            p_estimate_mat = resp_model_mat;
             for ii = 1:gridSize(1)
                 inputParams(I_params) = exp(Grid(ii));
-                [nLL_mat(ii), rmse_mat(ii), resp_model_mat(:,ii), p_estimate_mat(:,ii)] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                [nLL_mat(ii), rmse_mat(ii), resp_model_mat(:,ii), p_estimate_mat(:,ii)] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
             end
         case 2
+            nLL_mat = zeros(gridSize(1), gridSize(2));
+            rmse_mat = nLL_mat;
+            resp_model_mat = cell(gridSize(1), gridSize(2));
+            p_estimate_mat = resp_model_mat;
             for ii = 1:gridSize(1)
                 for jj = 1:gridSize(2)
                     inputParams(I_params) = Grid{ii,jj};
@@ -251,10 +256,14 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                     elseif sum(I_params == 2) == 1
                         inputParams(2) = exp(inputParams(2));
                     end
-                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
                 end
             end
         case 3
+            nLL_mat = zeros(gridSize(1), gridSize(2), gridSize(3));
+            rmse_mat = nLL_mat;
+            resp_model_mat = cell(gridSize(1), gridSize(2), gridSize(3));
+            p_estimate_mat = resp_model_mat;
             for ii = 1:gridSize(1)
                 for jj = 1:gridSize(2)
                     for kk = 1:gridSize(3)
@@ -264,11 +273,15 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                         elseif sum(I_params == 2) == 1
                             inputParams(2) = exp(inputParams(2));
                         end
-                        [nLL_mat(ii,jj,kk), rmse_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, p_estimate_mat{ii,jj,kk}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                        [nLL_mat(ii,jj,kk), rmse_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, p_estimate_mat{ii,jj,kk}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
                     end
                 end
             end 
         case 4
+            nLL_mat = zeros(gridSize(1), gridSize(2), gridSize(3), gridSize(4));
+            rmse_mat = nLL_mat;
+            resp_model_mat = cell(gridSize(1), gridSize(2), gridSize(3), gridSize(4));
+            p_estimate_mat = resp_model_mat;
             for ii = 1:gridSize(1)
                 for jj = 1:gridSize(2)
                     for kk = 1:gridSize(3)
@@ -279,12 +292,16 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                             elseif sum(I_params == 2) == 1
                                 inputParams(2) = exp(inputParams(2));
                             end
-                            [nLL_mat(ii,jj,kk,qq), rmse_mat(ii,jj,kk,qq), resp_model_mat{ii,jj,kk,qq}, p_estimate_mat{ii,jj,kk,qq}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                            [nLL_mat(ii,jj,kk,qq), rmse_mat(ii,jj,kk,qq), resp_model_mat{ii,jj,kk,qq}, p_estimate_mat{ii,jj,kk,qq}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
                         end
                     end
                 end
             end
         case 5
+            nLL_mat = zeros(gridSize(1), gridSize(2), gridSize(3), gridSize(4), gridSize(5));
+            rmse_mat = nLL_mat;
+            resp_model_mat = cell(gridSize(1), gridSize(2), gridSize(3), gridSize(4), gridSize(5));
+            p_estimate_mat = resp_model_mat;
             for ii = 1:gridSize(1)
                 for jj = 1:gridSize(2)
                     for kk = 1:gridSize(3)
@@ -296,7 +313,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                                 elseif sum(I_params == 2) == 1
                                     inputParams(2) = exp(inputParams(2));
                                 end
-                                [nLL_mat(ii,jj,kk,qq,pp), rmse_mat(ii,jj,kk,qq,pp), resp_model_mat{ii,jj,kk,qq,pp}, p_estimate_mat{ii,jj,kk,qq,pp}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, model);
+                                [nLL_mat(ii,jj,kk,qq,pp), rmse_mat(ii,jj,kk,qq,pp), resp_model_mat{ii,jj,kk,qq,pp}, p_estimate_mat{ii,jj,kk,qq,pp}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
                             end
                         end
                     end
@@ -304,27 +321,29 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             end
     end
 
-    %% Compute the model posterior
+    %% Compute the marginal likelihood
     switch NumParams
         case 1
             % Add the log likelihood to the log prior, subtract the max, and
             % exponentiate
-            modelPost = -nLL_mat' + prior;
+            modelPost = -nLL_mat + prior;
             modelPost = exp(modelPost-max(modelPost(:)));
-
+            
             % Intergrate across model parameter
+            %increment = params2fit(2)-params2fit(1);
+            %marginalLikelihood = qtrapz(modelPost)*increment;
             marginalLikelihood = qtrapz(modelPost);
 
             % Find the best fitting parameter (MAP)
             [~, I] = max(modelPost);
-            bestFit_SigmaNoise = sigma_noise(I);
-            fitParams = exp(bestFit_SigmaNoise);
+            bestFit_param = params2fit(I);
+            fitParams = exp(bestFit_param);
 
             % nLL, rmse, p_estimate, beta_model for best fit parameter
             nLL = nLL_mat(I);
             rmse = rmse_mat(I);
-            p_estimate = p_estimate_mat(I,:);
-            resp_model = resp_model_mat(I,:);
+            p_estimate = p_estimate_mat(:,I);
+            resp_model = resp_model_mat(:,I);
         case 2
             % Add the log likelihood to the log prior, subtract the max, and
             % exponentiate
@@ -333,20 +352,22 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             modelPost = exp(modelPost - max(modelPost(:)));
 
             % Integrate across parameters
+            %increment = params2fit(:,2)-params2fit(:,1);
+            %marginalLikelihood = qtrapz(qtrapz(modelPost)*increment(1))*increment(2);
             marginalLikelihood = qtrapz(qtrapz(modelPost));
 
             % Find best fitting parameters (MAP)
             [~, I] = max(modelPost(:));
-            [I_eta, I_sigma_noise] = ind2sub(size(modelPost), I);
-            bestFit_Eta = alpha(I_eta);
-            bestFit_SigmaNoise = sigma_noise(I_sigma_noise);
-            fitParams = [bestFit_Eta, exp(bestFit_SigmaNoise)];
+            [I_firstParam, I_secondParam] = ind2sub(size(modelPost), I);
+            bestFit_firstParam = firstParam(I_firstParam);
+            bestFit_secondParam = secondParam(I_secondParam);
+            fitParams = [exp(bestFit_firstParam), bestFit_secondParam];
 
             % nLL, rmse, p_estimate, beta_model for best fit parameters
-            nLL = nLL_mat(I_eta, I_sigma_noise);
-            rmse = rmse_mat(I_eta, I_sigma_noise);
-            p_estimate = p_estimate_mat{I_eta, I_sigma_noise};
-            resp_model = resp_model_mat{I_eta, I_sigma_noise};
+            nLL = nLL_mat(I_firstParam, I_secondParam);
+            rmse = rmse_mat(I_firstParam, I_secondParam);
+            p_estimate = p_estimate_mat{I_firstParam, I_secondParam};
+            resp_model = resp_model_mat{I_firstParam, I_secondParam};
         case 3
             % Add the log likelihood to the log prior, subtract the max, and
             % exponentiate
@@ -356,22 +377,81 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             modelPost = exp(modelPost - max(modelPost(:)));
 
             % Integrate across parameters
+            %increment = params2fit(:,2)-params2fit(:,1);
+            %marginalLikelihood = qtrapz(qtrapz(qtrapz(modelPost)*increment(1))*increment(2))*increment(3);
             marginalLikelihood = qtrapz(qtrapz(qtrapz(modelPost)));
 
             % Find best fitting parameters (MAP)
             [~, I] = max(modelPost(:));
-            [I_eta, I_sigma_noise, I_w] = ind2sub(size(modelPost), I);
+            [I_firstParam, I_secondParam, I_thirdParam] = ind2sub(size(modelPost), I);
 
-            bestFit_Eta = alpha(I_eta);
-            bestFit_SigmaNoise = sigma_noise(I_sigma_noise);
-            bestFit_w = w(I_w);
-            fitParams = [bestFit_Eta, exp(bestFit_SigmaNoise), bestFit_w];
+            bestFit_firstParam = exp(firstParam(I_firstParam));
+            bestFit_secondParam = secondParam(I_secondParam);
+            bestFit_thirdParam = thirdParam(I_thirdParam);
+            fitParams = [bestFit_firstParam, bestFit_secondParam, bestFit_thirdParam];
 
             % nLL, rmse, p_estimate, beta_model for best fit parameters
-            nLL = nLL_mat(I_eta, I_sigma_noise, I_w);
-            rmse = rmse_mat(I_eta, I_sigma_noise, I_w);
-            p_estimate = p_estimate_mat{I_eta, I_sigma_noise, I_w};
-            resp_model = resp_model_mat{I_eta, I_sigma_noise, I_w};
-    end
+            nLL = nLL_mat(I_firstParam, I_secondParam, I_thirdParam);
+            rmse = rmse_mat(I_firstParam, I_secondParam, I_thirdParam);
+            p_estimate = p_estimate_mat{I_firstParam, I_secondParam, I_thirdParam};
+            resp_model = resp_model_mat{I_firstParam, I_secondParam, I_thirdParam};
+        case 4
+            % Add the log likelihood to the log prior, subtract the max, and
+            % exponentiate
+            prior = repmat(prior, [numel(prior), 1, numel(prior), numel(prior)]);
+            modelPost = -nLL_mat + prior;
+            modelPost = exp(modelPost - max(modelPost(:)));
 
+            % Integrate across parameters
+            %increment = params2fit(:,2)-params2fit(:,1);
+            %marginalLikelihood = qtrapz(qtrapz(qtrapz(qtrapz(modelPost)*increment(1))*increment(2))*increment(3))*increment(4);
+            marginalLikelihood = qtrapz(qtrapz(qtrapz(qtrapz(modelPost))));
+
+            % Find best fitting parameters (MAP)
+            [~, I] = max(modelPost(:));
+            [I_firstParam, I_secondParam, I_thirdParam, I_fourthParam] = ind2sub(size(modelPost), I);
+
+            bestFit_firstParam = exp(firstParam(I_firstParam));
+            bestFit_secondParam = secondParam(I_secondParam);
+            bestFit_thirdParam = thirdParam(I_thirdParam);
+            bestFit_fourthParam = fourthParam(I_fourthParam);
+            fitParams = [bestFit_firstParam, bestFit_secondParam, bestFit_thirdParam, bestFit_fourthParam];
+
+            % nLL, rmse, p_estimate, beta_model for best fit parameters
+            nLL = nLL_mat(I_firstParam, I_secondParam, I_thirdParam, I_fourthParam);
+            rmse = rmse_mat(I_firstParam, I_secondParam, I_thirdParam, I_fourthParam);
+            p_estimate = p_estimate_mat{I_firstParam, I_secondParam, I_thirdParam, I_fourthParam};
+            resp_model = resp_model_mat{I_firstParam, I_secondParam, I_thirdParam, I_fourthParam};
+        case 5
+            % Add the log likelihood to the log prior, subtract the max, and
+            % exponentiate
+            prior = repmat(prior, [numel(prior), 1, numel(prior), 1, numel(prior)]);
+            modelPost = -nLL_mat + prior;
+            modelPost = exp(modelPost - max(modelPost(:)));
+
+            % Integrate across parameters
+            %increment = params2fit(:,2)-params2fit(:,1);
+            %marginalLikelihood = qtrapz(qtrapz(qtrapz(qtrapz(qtrapz(modelPost)*increment(1))*increment(2))*increment(3))*increment(4))*increment(5);
+            marginalLikelihood = qtrapz(qtrapz(qtrapz(qtrapz(qtrapz(modelPost)))));
+
+            % Find best fitting parameters (MAP)
+            [~, I] = max(modelPost(:));
+            [I_firstParam, I_secondParam, I_thirdParam, I_fourthParam, I_fifthParam] = ind2sub(size(modelPost), I);
+
+            bestFit_firstParam = exp(firstParam(I_firstParam));
+            bestFit_secondParam = secondParam(I_secondParam);
+            bestFit_thirdParam = thirdParam(I_thirdParam);
+            bestFit_fourthParam = fourthParam(I_fourthParam);
+            bestFit_fifthParam = fifthParam(I_fifthParam);
+            fitParams = [bestFit_firstParam, bestFit_secondParam, bestFit_thirdParam, bestFit_fourthParam, bestFit_fifthParam];
+
+            % nLL, rmse, p_estimate, beta_model for best fit parameters
+            nLL = nLL_mat(I_firstParam, I_secondParam, I_thirdParam, I_fourthParam, I_fifthParam);
+            rmse = rmse_mat(I_firstParam, I_secondParam, I_thirdParam, I_fourthParam, I_fifthParam);
+            p_estimate = p_estimate_mat{I_firstParam, I_secondParam, I_thirdParam, I_fourthParam, I_fifthParam};
+            resp_model = resp_model_mat{I_firstParam, I_secondParam, I_thirdParam, I_fourthParam, I_fifthParam};
+        otherwise
+            error('changeprob_mL can only fit 1-5 parameters.')
+    end
+    toc
 end
