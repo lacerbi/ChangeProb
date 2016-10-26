@@ -50,7 +50,7 @@ void RLobserver_overt( double *model_resp, double *log_Pz, double *parameters, d
         
         *(model_resp) = m0;
         *(log_Pz++) = a1 + a2 * (*z_resp-*model_resp)*(*z_resp-*model_resp);
-        model_resp++;   z_resp++;   X++;
+        model_resp++;   z_resp++;
         
         for (t = 1; t < Nt; t++) {
             if (score[t-1] == 0.) {
@@ -61,7 +61,8 @@ void RLobserver_overt( double *model_resp, double *log_Pz, double *parameters, d
             }
             *(log_Pz++) = a1 + a2 * (*z_resp-*model_resp)*(*z_resp-*model_resp);
             model_resp++;   z_resp++;   X++;
-        }
+        }        
+        X++;
     }
 
     /*

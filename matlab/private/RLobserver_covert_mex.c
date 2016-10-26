@@ -57,7 +57,7 @@ void RLobserver_covert( double *model_resp, double *log_P, double *parameters, d
         resp_obs = C0;
         z_model = m0;
         
-        if (*(X++) <= z_model) {
+        if (*X <= z_model) {
             *(model_resp++) = mr1;
             *(log_P++) = (*(resp_obs++) == 1) ? logmr1a : logmr1b;
         }
@@ -70,7 +70,7 @@ void RLobserver_covert( double *model_resp, double *log_P, double *parameters, d
             if (score[t-1] == 0.) 
                 z_model += parameters[1]*( *X - z_model );                
             
-            if (*(X++) <= z_model) {
+            if (*(++X) <= z_model) {
                 *(model_resp++) = mr1;
                 *(log_P++) = (*(resp_obs++) == 1) ? logmr1a : logmr1b;
             }
@@ -80,6 +80,8 @@ void RLobserver_covert( double *model_resp, double *log_P, double *parameters, d
             }
             
         }
+        X++;
+        
     }
 
     /*

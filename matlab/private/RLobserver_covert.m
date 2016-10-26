@@ -33,9 +33,12 @@ for qq = 1:Ns
     end
     model_resp(1,qq) = lambda/2 + (1-lambda)*model_resp(1,qq);
     log_P(1,qq) = log(model_resp(1,qq)).*(resp_obs(1)==1) + log(1-model_resp(1,qq)).*(resp_obs(1)~=1);
+    xprev = x(1);
     for t = 2:Nt
         if score(t-1) == 0
-            z_model(t,qq) = z_model(t-1,qq) + parameters(2)*(x(t)-z_model(t-1,qq));
+            % This version is 25 times slower
+            % z_model(t,qq) = z_model(t-1,qq) + parameters(2)*(x(t-1)-z_model(t-1,qq)); 
+            z_model(t,qq) = z_model(t-1,qq) + parameters(2)*(xprev-z_model(t-1,qq));
         else
             z_model(t,qq) = z_model(t-1,qq);
         end
@@ -44,6 +47,7 @@ for qq = 1:Ns
         else
             model_resp(t,qq) = 0;
         end
+        xprev = x(t);
         model_resp(t,qq) = lambda/2 + (1-lambda)*model_resp(t,qq);
         log_P(t,qq) = log(model_resp(t,qq)).*(resp_obs(t)==1) + log(1-model_resp(t,qq)).*(resp_obs(t)~=1);
     end
