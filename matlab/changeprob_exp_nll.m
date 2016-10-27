@@ -66,9 +66,10 @@ else
     PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
     log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
 end
+Cprev = C(1);
 
 for t = 2:NumTrials
-    p_estimate(t,:) = p_estimate(t-1,:) + alpha*(C(t-1)-p_estimate(t-1,:));
+    p_estimate(t,:) = p_estimate(t-1,:) + alpha*(Cprev-p_estimate(t-1,:));
     p_conservative(t,:) = w*p_estimate(t,:) + (1-w)*p_bias;
     beta(t) = p_conservative(t,:)/(1-p_conservative(t,:));
     z_model(t) = sigma^2 * log(beta(t)) / diff(mu);
@@ -84,6 +85,7 @@ for t = 2:NumTrials
         end
         log_P(:,t) = log(PChatA(:,t)).*(Chat(t)==1) + log(1-PChatA(:,t)).*(Chat(t)~=1);
     end
+    Cprev = C(t);
 end
 
 if task == 1

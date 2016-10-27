@@ -85,7 +85,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     end
     
     paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w'};
-    fitParamNames = paramNames{logical(parameters)};
+    fitParamNames = paramNames{parameters};
     NumParams = sum(parameters);
     I_params = find(parameters ~= 0);
     % Sampling rate of parameter grid

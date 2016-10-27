@@ -10,7 +10,7 @@ function [nLL, rmse, p_estimate, p_true, resp_model, resp_obs] = changeprob_RLPr
 % #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE rate, #4 is
 % GAMMA, #5 is ALPHA, and #6 is W
 if nargin < 1; parameters = []; ...
-        [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(); task = 1; end
+        [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(); task = 1; end
 
 % Data struct or random seed for fake data generation
 if nargin < 2; error('You must specify the session parameters.'); end
@@ -67,10 +67,11 @@ switch task
         PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
         log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
 end
+Cprev = C(1);
 
 for t = 2:NumTrials
     if score(t-1) == 0
-        p_estimate(t,:) = p_estimate(t-1,:) + alpha*(C(t-1)-p_estimate(t-1,:));
+        p_estimate(t,:) = p_estimate(t-1,:) + alpha*(Cprev-p_estimate(t-1,:));
     else
         p_estimate(t,:) = p_estimate(t-1,:);
     end
@@ -90,6 +91,7 @@ for t = 2:NumTrials
             end
             log_P(:,t) = log(PChatA(:,t)).*(Chat(t)==1) + log(1-PChatA(:,t)).*(Chat(t)~=1);
     end
+    Cprev = C(t);
 end
 
 switch task
