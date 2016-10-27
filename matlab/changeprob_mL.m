@@ -122,6 +122,11 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     
     %% Get session parameters
     [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
+    if and(task == 1, model == 5)
+        X = S + sigma_ellipse*randn(numel(S), 1000);
+    else
+        X = zeros(numel(S), 1000);
+    end
     
     %% Observer model parameters
     params2fit = zeros(NumParams, gridSize(1));
@@ -243,7 +248,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             post = cell(gridSize(1));
             for ii = 1:gridSize(1)
                 inputParams(I_params) = exp(Grid(ii));
-                [nLL_mat(ii), rmse_mat(ii), resp_model_mat(:,ii), p_estimate_mat(:,ii), post{ii}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
+                [nLL_mat(ii), rmse_mat(ii), resp_model_mat(:,ii), p_estimate_mat(:,ii), post{ii}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
             end
         case 2
             nLL_mat = zeros(gridSize(1), gridSize(2));
@@ -259,7 +264,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                     elseif sum(I_params == 2) == 1
                         inputParams(2) = exp(inputParams(2));
                     end
-                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}, post{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
+                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}, post{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
                 end
             end
         case 3
@@ -277,7 +282,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                         elseif sum(I_params == 2) == 1
                             inputParams(2) = exp(inputParams(2));
                         end
-                        [nLL_mat(ii,jj,kk), rmse_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, p_estimate_mat{ii,jj,kk}, post{ii,jj,kk}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
+                        [nLL_mat(ii,jj,kk), rmse_mat(ii,jj,kk), resp_model_mat{ii,jj,kk}, p_estimate_mat{ii,jj,kk}, post{ii,jj,kk}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
                     end
                 end
             end 
@@ -297,7 +302,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                             elseif sum(I_params == 2) == 1
                                 inputParams(2) = exp(inputParams(2));
                             end
-                            [nLL_mat(ii,jj,kk,qq), rmse_mat(ii,jj,kk,qq), resp_model_mat{ii,jj,kk,qq}, p_estimate_mat{ii,jj,kk,qq}, post{ii,jj,kk,qq}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
+                            [nLL_mat(ii,jj,kk,qq), rmse_mat(ii,jj,kk,qq), resp_model_mat{ii,jj,kk,qq}, p_estimate_mat{ii,jj,kk,qq}, post{ii,jj,kk,qq}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
                         end
                     end
                 end
@@ -319,7 +324,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                                 elseif sum(I_params == 2) == 1
                                     inputParams(2) = exp(inputParams(2));
                                 end
-                                [nLL_mat(ii,jj,kk,qq,pp), rmse_mat(ii,jj,kk,qq,pp), resp_model_mat{ii,jj,kk,qq,pp}, p_estimate_mat{ii,jj,kk,qq,pp}, post{ii,jj,kk,qq,pp}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model);
+                                [nLL_mat(ii,jj,kk,qq,pp), rmse_mat(ii,jj,kk,qq,pp), resp_model_mat{ii,jj,kk,qq,pp}, p_estimate_mat{ii,jj,kk,qq,pp}, post{ii,jj,kk,qq,pp}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
                             end
                         end
                     end

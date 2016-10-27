@@ -1,4 +1,4 @@
-function [nLL, rmse, resp_model, p_estimate, post] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model)
+function [nLL, rmse, resp_model, p_estimate, post] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X)
 %CHNAGEPROB_NLL Computes the negative log likelihood for the specified
 %model
 %(Documentation to be written)
@@ -18,15 +18,15 @@ switch model
     case 5
         switch task
             case 1
-                X = S + inputParams(1)*randn(numel(S), 1000);
-                [resp_model, logP] = RLobserver_overt_mex(inputParams,sigma,diff(mu),X,.5,resp_obs,score);
+                [resp_model, logP] = RLobserver_overt_mex([inputParams(5), inputParams(2)],sigma,diff(mu),X,.5,resp_obs,score);
             case 2
                 X = S + inputParams(1)*randn(numel(S), 1000);
-                [resp_model, logP] = RLobserver_covert_mex(inputParams,sigma,diff(mu),X,.5,resp_obs,score);
+                [resp_model, logP] = RLobserver_covert_mex([inputParams(5), inputParams(1)],sigma,diff(mu),X,.5,resp_obs,score);
         end
         % Marginalize over x (in likelihood space NOT log likelihood space)
         logLikelihood = nansum(logP); % Log likelihood for each x vector
         likelihood = mean(exp((logLikelihood-max(logLikelihood)))); % p(resp | x, theta)
+        nLL = -nansum(log(likelihood));
         rmse = [];
         p_estimate = [];
         post = [];
