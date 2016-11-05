@@ -1,11 +1,11 @@
 function data = ChangeProb_loaddata()
 %CHANGEPROB_LOADDATA Load all datasets from changeprobability experiment.
 
-subjects = {'EHN','ERK','GK','JKT','SML','EGC','HHL','JYZ','RND','SQC','CWG'};
+subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'};
 
 data = [];
-for i = 1:numel(subjects)
-    temp = load(['ChangingProbabilities_' subjects{i} '.mat']);
+for i = 1:numel(subID)
+    temp = load(['ChangingProbabilities_' subID{i} '.mat']);
     data{i} = temp.data;    
 end
 

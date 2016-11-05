@@ -1,5 +1,5 @@
 function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = runfit(jobNumber)
+    resp_obs, p_true, p_estimate, post] = changeprob_runfit(jobNumber)
 %RUNFIT Runs model comparison for changing probability experiment
 %   Detailed explanation goes here
 
@@ -41,12 +41,13 @@ SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
 
 % Fit data for subject, model, and task specified
 parameters = [];
-% Need to make sure data is in the same path as the other functions or cd
-% to the appropriate path before loading - I'm not sure what the path would
-% be for the cluster home directory...
-cd('/Users/elysenorton/Desktop/ChangeProb/data');
-load(strcat('ChangingProbabilities_', runSubject)); % Load data
-cd('/Users/elysenorton/Desktop/ChangeProb/matlab');
+
+% Add project directory and subdirs to path
+matlabdir = fileparts(which('changeprob_mL'));
+basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
+addpath(genpath(basedir));
+load(['ChangingProbabilities_', runSubject]); % Load data
+
 if strcmp(runModel, 'exponential_conservative')
     runModel = 'exponential';
     if isempty(parameters)
@@ -70,7 +71,8 @@ end
     resp_obs, p_true, p_estimate, post] = changeprob_mL(runModel, data, task, parameters);
 
 save(SaveFileName, 'marginalLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
-    'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post');
+    'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
+    'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
 
 end
 
