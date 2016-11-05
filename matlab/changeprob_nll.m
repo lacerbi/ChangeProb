@@ -21,12 +21,13 @@ switch model
                 [resp_model, logP] = RLobserver_overt_mex([inputParams(5), inputParams(2)],sigma,diff(mu),X,.5,resp_obs,score);
             case 2
                 X = S + inputParams(1)*randn(numel(S), 1000);
-                [resp_model, logP] = RLobserver_covert_mex([inputParams(5), inputParams(1)],sigma,diff(mu),X,.5,resp_obs,score);
+                [resp_model, logP] = RLobserver_covert_mex([inputParams(1), inputParams(5)],sigma,diff(mu),X,.5,resp_obs,score);
         end
         % Marginalize over x (in likelihood space NOT log likelihood space)
-        logLikelihood = nansum(logP); % Log likelihood for each x vector
-        likelihood = mean(exp((logLikelihood-max(logLikelihood)))); % p(resp | x, theta)
-        nLL = -nansum(log(likelihood));
+        maxLL = max(logP(:));
+        likelihood = mean(exp(logP-maxLL),2); % p(resp | x, theta)
+        nLL = -nansum(log(likelihood)+maxLL);
+        resp_model = mean(resp_model,2)';
         rmse = [];
         p_estimate = [];
         post = [];
