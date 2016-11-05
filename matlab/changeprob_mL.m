@@ -123,7 +123,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     %% Get session parameters
     [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
     if and(task == 1, model == 5)
-        X = S + sigma_ellipse*randn(numel(S), 1000);
+        X = bsxfun(@plus, S, sigma_ellipse*randn(numel(S), 1000));
     else
         X = zeros(numel(S), 1000);
     end
