@@ -22,11 +22,11 @@ else
 fi
 
 #RESOURCES="nodes=1:ppn=1,mem=4GB,walltime=${RUNTIME},feature=ivybridge_20p_64GB_3000MHz"
-RESOURCES="nodes=1:ppn=1,mem=4GB,walltime=${RUNTIME}"
+RESOURCES="nodes=1:ppn=1,mem=6GB,walltime=${RUNTIME}"
 
 #Convert from spaces to commas
 JOBLIST=${JOBLIST// /,}
 echo JOBS $JOBLIST
 
 JOBNAME=${SHORTNAME}${RUN}
-qsub -t ${JOBLIST} -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER -l ${RESOURCES} -N ${JOBNAME} ${JOBSCRIPT}
+qsub -t ${JOBLIST} -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER -l ${RESOURCES} -M ${USER}@nyu.edu -N ${JOBNAME} ${JOBSCRIPT}

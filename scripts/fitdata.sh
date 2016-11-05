@@ -1,7 +1,6 @@
 #!/bin/sh
 #PBS -o localhost:${PBS_O_WORKDIR}/
 #PBS -e localhost:${PBS_O_WORKDIR}/
-#PBS -M ehn222@nyu.edu
 #PBS -q normal
 
 module purge
