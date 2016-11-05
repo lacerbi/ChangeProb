@@ -45,7 +45,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     % Author:   Elyse norton
     % Email:    elyse.norton@gmail.com
     % Date:     10/20/2016
-    tic
+    %tic
     % Model to be fit
     if nargin < 1; error('Please indicate the model you want to fit.'); end
     potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ...
@@ -228,8 +228,8 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     prior = ones(1, gridSize(1));
     multParams = ones(1, gridSize(1));
     for vv = 1:NumParams
-        prior = unifpdf(params2fit(vv,:), min(params2fit(vv,:)), max(params2fit(vv,:)));
-        prior = prior.*prior;
+        prior_1 = unifpdf(params2fit(vv,:), min(params2fit(vv,:)), max(params2fit(vv,:)));
+        prior = prior.*prior_1;
         multParams = multParams.*params2fit(vv,:);
     end
     minParams = min(multParams);
@@ -252,8 +252,8 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             end
         case 2
             nLL_mat = zeros(gridSize(1), gridSize(2));
-            rmse_mat = nLL_mat;
-            resp_model_mat = cell(gridSize(1), gridSize(2));
+            rmse_mat = cell(gridSize(1), gridSize(2));
+            resp_model_mat = rmse_mat;
             p_estimate_mat = resp_model_mat;
             post = resp_model_mat;
             for ii = 1:gridSize(1)
@@ -264,7 +264,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
                     elseif sum(I_params == 2) == 1
                         inputParams(2) = exp(inputParams(2));
                     end
-                    [nLL_mat(ii,jj), rmse_mat(ii,jj), resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}, post{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
+                    [nLL_mat(ii,jj), rmse_mat{ii,jj}, resp_model_mat{ii,jj}, p_estimate_mat{ii,jj}, post{ii,jj}] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
                 end
             end
         case 3
@@ -377,7 +377,7 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
             % nLL, rmse, p_estimate, beta_model for best fit parameters
             nLL = nLL_mat(I_firstParam, I_secondParam);
-            rmse = rmse_mat(I_firstParam, I_secondParam);
+            rmse = rmse_mat{I_firstParam, I_secondParam};
             p_estimate = p_estimate_mat{I_firstParam, I_secondParam};
             resp_model = resp_model_mat{I_firstParam, I_secondParam};
             post = post{I_firstParam, I_secondParam};
@@ -469,5 +469,5 @@ function [marginalLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
         otherwise
             error('changeprob_mL can only fit a maximum of 5 parameters.')
     end
-    toc
+    %toc
 end
