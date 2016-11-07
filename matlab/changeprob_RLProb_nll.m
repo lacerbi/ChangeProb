@@ -64,7 +64,8 @@ switch task
     case 1
         log_P(:,1) = -0.5*log(2*pi*sigma_criterion) - 0.5*((z_resp(1)-z_model(:,1))./sigma_criterion).^2;
     case 2
-        PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
+        % PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
+        PChatA(:,1) = 1 - 0.5*erfc( -(S(1) - z_model(1)) / (sqrt(2)*sigma_ellipse) );   % Faster implementation            
         log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
 end
 Cprev = C(1);
@@ -85,7 +86,8 @@ for t = 2:NumTrials
                 log_P(:,t) = log(lambda/360 + (1-lambda)*exp(log_P(:,t)));
             end
         case 2
-            PChatA(:,t) = 1-normcdf(S(t), z_model(t), sigma_ellipse);
+            % PChatA(:,t) = 1-normcdf(S(t), z_model(t), sigma_ellipse);
+            PChatA(:,t) = 1 - 0.5*erfc( -(S(t) - z_model(t)) / (sqrt(2)*sigma_ellipse) );   % Faster implementation            
             if lambda > 0
                 PChatA(:,t) = lambda/2 + (1-lambda)*PChatA(:,t);
             end

@@ -89,7 +89,7 @@ NumParams = sum(parameters);
 I_params = find(parameters ~= 0);
 % Sampling rate of parameter grid
 if nargin < 5 || isempty(gridSize)
-    gridSize = zeros(1, NumParams) + 100; % Default grid is 100 x 100
+    gridSize = 100*ones(1, NumParams); % Default grid is 100 x 100
     if nargin < 5
         paramBounds = [];
     end
@@ -132,6 +132,12 @@ for iParam = 1:NumParams
     end
 end
 
+% Create parameter list for fitting
+for iParam = 1:NumParams; params2fit_cell{iParam} = params2fit(iParam,:); end
+params2fit_list = combvec(params2fit_cell{:})';
+params2fit_list(:,1) = exp(params2fit_list(:,1));   % Check this
+clear params2fit_cell;
+
 % Default parameter values for those not fitted
 inputParams = zeros(1,numel(parameters));
 I_notFit = find(parameters == 0);
@@ -153,18 +159,16 @@ logprior = log(prior);
 
 %% Compute the negative log likelihood for all parameter sets
 
-nLL_mat = zeros(gridSize);
-fitParams = zeros(1,NumParams);
+nLL_mat = zeros([gridSize,1]);
 maxii = prod(gridSize);
 for ii = 1:maxii
-    if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
-    [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(gridSize,ii);
-    for iParam = 1:NumParams; fitParams(iParam) = params2fit(iParam,idx(iParam)); end
-    fitParams(1) = exp(fitParams(1));
-    inputParams(I_params) = fitParams;
+    if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end    
+    % Parameters in params2fit_list are already transformed
+    inputParams(I_params) = params2fit_list(ii,:);
     nLL_mat(ii) = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
 end
 fprintf('\n');
+clear params2fit_list;  % Free up some memory
 
 %% Compute the marginal likelihood
 
