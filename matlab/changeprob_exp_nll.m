@@ -65,7 +65,7 @@ if task == 1
 else
     % PChatA(:,1) = 1 - normcdf(S(1), z_model(:,1), sigma_ellipse);
     PChatA(:,1) = 1 - 0.5*erfc( -(S(1) - z_model(1)) / (sqrt(2)*sigma_ellipse) );   % Faster implementation
-    log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)==2);
+    log_P(:,1) = log(PChatA(:,1)).*(Chat(1)==1) + log(1-PChatA(:,1)).*(Chat(1)~=1);
 end
 Cprev = C(1);
 

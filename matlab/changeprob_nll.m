@@ -20,7 +20,7 @@ switch model
             case 1
                 [resp_model, logP] = RLobserver_overt_mex([inputParams(5), inputParams(2)],sigma,diff(mu),X,.5,resp_obs,score);
             case 2
-                X = bsxfun(@plus, S, inputParams(1)*randn(numel(S), 1000));
+                X = bsxfun(@plus, S, inputParams(1)*randn(numel(S), 5000));
                 [resp_model, logP] = RLobserver_covert_mex([inputParams(1), inputParams(5)],sigma,diff(mu),X,.5,resp_obs,score);
         end
         % Marginalize over x (in likelihood space NOT log likelihood space)
