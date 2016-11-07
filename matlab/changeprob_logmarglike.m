@@ -157,12 +157,14 @@ nLL_mat = zeros(gridSize);
 fitParams = zeros(1,NumParams);
 maxii = prod(gridSize);
 for ii = 1:maxii
+    if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
     [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(gridSize,ii);
     for iParam = 1:NumParams; fitParams(iParam) = params2fit(iParam,idx(iParam)); end
     fitParams(1) = exp(fitParams(1));
     inputParams(I_params) = fitParams;
     nLL_mat(ii) = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
 end
+fprintf('\n');
 
 %% Compute the marginal likelihood
 
