@@ -5,7 +5,12 @@ function [nLL, rmse, resp_model, p_estimate, post] = changeprob_nll(inputParams,
 
 switch model
     case 1
-        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:4), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        if inputParams(7) == 0
+            prior_rl = [];
+        else
+            prior_rl = [1,inputParams(7)];
+        end
+        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:4), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl);
     case 2
         [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];

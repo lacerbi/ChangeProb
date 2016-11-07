@@ -13,17 +13,20 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'};
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
-    'exponential_conservative', 'RL_probability_conservative', 'RL_criterion'};
+    'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
+    'subBayesian_rlprior'};
 
 Nsubjs = numel(subID);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 
-% Job number ranges from 1 to 154 (11 subjects x 2 tasks x 7 models)
+% Job number ranges from 1 to 176 (11 subjects x 2 tasks x 8 models)
 maxID = Nsubjs*Ntasks*Nmodels;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
 end
+
+rng(jobNumber);     % Fix random seed
 
 % Which subject?
 subIndex = rem(jobNumber-1,Nsubjs)+1;
@@ -54,24 +57,32 @@ basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
 addpath(genpath(basedir));
 load(['ChangingProbabilities_', runSubject]); % Load data
 
-if strcmp(runModel, 'exponential_conservative')
-    runModel = 'exponential';
-    if isempty(parameters)
-        if task == 1
-            parameters = [0 1 0 0 1 1];
-        else
-            parameters = [1 0 0 0 1 1];
+switch(runModel)
+    case 'exponential_conservative'
+        runModel = 'exponential';
+        if isempty(parameters)
+            if task == 1
+                parameters = [0 1 0 0 1 1 0];
+            else
+                parameters = [1 0 0 0 1 1 0];
+            end
         end
-    end
-elseif strcmp(runModel, 'RL_probability_conservative')
-    runModel = 'RL_probability';
-    if isempty(parameters)
-        if task == 1
-            parameters = [0 1 0 0 1 1];
-        else
-            parameters = [1 0 0 0 1 1];
+    case 'RL_probability_conservative'
+        runModel = 'RL_probability';
+        if isempty(parameters)
+            if task == 1
+                parameters = [0 1 0 0 1 1 0];
+            else
+                parameters = [1 0 0 0 1 1 0];
+            end
         end
-    end
+    case 'subBayesian_rlprior'
+        runModel = 'idealBayesian';
+        if task == 1
+            parameters = [0 1 0 0 0 0 1];
+        else
+            parameters = [1 0 0 0 0 0 1];
+        end    
 end
 
 [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...

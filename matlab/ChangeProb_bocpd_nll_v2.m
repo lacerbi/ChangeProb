@@ -1,4 +1,4 @@
-function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
+function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl)
 %CHANGEPROB_BOCPD_NLL Bayesian online changepoint detection observer.
 % (Documentation to be written.)
 %
@@ -11,8 +11,12 @@ function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(par
 % Parameter vector:
 % #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, #4 is GAMMA,
 % #5 is ALPHA, and #6 is W
-if nargin < 1; parameters = []; ...
-        [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(); task = 1; end
+if nargin < 1
+    parameters = [];
+    prior_rl = [];
+    [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters();
+    task = 1; 
+end
 
 % Data struct or random seed for fake data generation
 if nargin < 2; error('You must specify the session parameters.'); end
@@ -21,13 +25,16 @@ if nargin < 2; error('You must specify the session parameters.'); end
 if nargin < 9 || isempty(task); task = 1; end
 if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt-criterion) or 2 (covert-criterion).'); end
 
+if nargin < 10 || isempty(prior_rl)
+    prior_rl = [80,120];    % Default runlengths
+end
+
 %% Experiment constants
 
 % Run length ~ Uniform[prior_rl(1),prior_rl(2)]
 % if isfield(options,'prior_rl') && ~isempty(options.prior_rl)
 %     prior_rl = options.prior_rl;
 % else
-    prior_rl = [80,120];        % Default runlengths
 %end
 L = diff(prior_rl)+1;           % Number of elements
 

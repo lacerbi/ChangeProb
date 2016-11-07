@@ -59,20 +59,24 @@ if isnumeric(data); rng(data); data = []; end
 if nargin < 3 || isempty(task); task = 1; end % overt-criterion task is the default
 if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt) or 2 (covert).'); end
 
+NumSamples = 5000;
+MaxParams = 7;
+
 % Parameters to be fit
 if nargin < 4 || isempty(parameters)
+    parameters = zeros(1,MaxParams);    
     switch task
         case 1
             if model < 3
-                parameters = [0 1 0 0 0 0];
+                parameters(2) = 1;
             else
-                parameters = [0 1 0 0 1 0];
+                parameters([2,5]) = 1;
             end
         case 2
             if model < 3
-                parameters = [1 0 0 0 0 0];
+                parameters(1) = 1;
             else
-                parameters = [1 0 0 0 1 0];
+                parameters([1,5]) = 1;
             end
     end
     if nargin < 4
@@ -83,7 +87,7 @@ elseif sum(parameters) == 0
     error('You must specify at least one parameter to fit.')
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax'};
 fitParamNames = paramNames{logical(parameters)};
 NumParams = sum(parameters);
 I_params = find(parameters ~= 0);
@@ -99,7 +103,7 @@ end
 
 % Lower and upper parameter bounds
 if nargin < 6 || isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 1,100];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -110,9 +114,9 @@ end
 %% Get session parameters
 [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
 if task == 1 && model == 5
-    X = bsxfun(@plus, S, sigma_ellipse*randn(numel(S), 1000));
+    X = bsxfun(@plus, S, sigma_ellipse*randn(numel(S), NumSamples));
 else
-    X = zeros(numel(S), 1000);
+    X = [];
 end
 
 %% Observer model parameters
@@ -129,6 +133,8 @@ for iParam = 1:NumParams
             params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % alpha
         case 6
             params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % w
+        case 7
+            params2fit(iParam,:) = round(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % Tmax (discrete)
     end
 end
 
@@ -146,7 +152,8 @@ lapse_def = 0;          % Default lapse (i.e., no lapse)
 gamma_def = Inf;        % Default gamma (i.e., BDT)
 alpha_def = 0.2;        % Default alpha
 w_def     = 1;          % Default w (i.e., no bias)
-notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def];
+Tmax_def  = 0;          % None provided, use default prior window
+notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 %% Choose priors - start with uniformative priors for all parameters
@@ -162,7 +169,7 @@ logprior = log(prior);
 nLL_mat = zeros([gridSize,1]);
 maxii = prod(gridSize);
 for ii = 1:maxii
-    if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end    
+    if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
     % Parameters in params2fit_list are already transformed
     inputParams(I_params) = params2fit_list(ii,:);
     nLL_mat(ii) = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
