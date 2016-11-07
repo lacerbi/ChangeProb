@@ -188,7 +188,7 @@ lmL = log(Z) + maxlogUpost;
 % Find the MAP (just for now; we should do better)
 [~,linidx] = max(logUpost(:));
 [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(size(logUpost),linidx);
-for iParam = 1:NumParams; bestFit_param(iParam) = params2fit(idx(iParam)); end
+for iParam = 1:NumParams; bestFit_param(iParam) = params2fit(iParam,idx(iParam)); end
 
 % Transform parameters (check that this is correct)
 fitParams = bestFit_param; fitParams(1) = exp(fitParams(1));
