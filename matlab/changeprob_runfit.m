@@ -77,6 +77,9 @@ end
 [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters);
 
+fprintf('MAP parameters:\n');
+fitParams
+
 save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
     'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
     'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
