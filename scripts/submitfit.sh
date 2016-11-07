@@ -21,8 +21,8 @@ else
 	JOBLIST="1-${MAXID}"
 fi
 
-#RESOURCES="nodes=1:ppn=1,mem=4GB,walltime=${RUNTIME},feature=ivybridge_20p_64GB_3000MHz"
-RESOURCES="nodes=1:ppn=1,mem=6GB,walltime=${RUNTIME}"
+#RESOURCES="nodes=1:ppn=1,mem=6GB,walltime=${RUNTIME}"
+RESOURCES="nodes=1:ppn=1,mem=4GB,walltime=${RUNTIME}"
 
 #Convert from spaces to commas
 JOBLIST=${JOBLIST// /,}
