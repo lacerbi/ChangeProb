@@ -103,7 +103,7 @@ end
 
 % Lower and upper parameter bounds
 if nargin < 6 || isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 1,100];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
