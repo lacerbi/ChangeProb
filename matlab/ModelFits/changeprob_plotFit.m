@@ -107,8 +107,8 @@ function [lmL_Overt, lmL_Covert] = changeprob_plotFit(initials, models, task, da
     % Plot bar graph for model comparison if multiple models are called
     if numModels > 1 
         if numTasks == 2
-            modelRelScore_Overt = lmL_Overt-lmL_Overt(:,1);
-            modelRelScore_Covert = lmL_Covert-lmL_Covert(:,1);
+            modelRelScore_Overt = bsxfun(@minus, lmL_Overt, lmL_Overt(:,1));
+            modelRelScore_Covert = bsxfun(@minus, lmL_Covert, lmL_Covert(:,1));
             f = figure(h); 
             set(f,'name','Relative model fits','numbertitle','off');
             subplot(2,1,1); hold on;
