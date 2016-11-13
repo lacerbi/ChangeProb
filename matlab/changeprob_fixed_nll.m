@@ -58,10 +58,10 @@ switch task
         resp_model = z_model;
     case 2
         PChatA = 1 - normcdf(S, z_model, sigma_ellipse);
-        log_P = log(PChatA).*(Chat==1) + log(1-PChatA).*(Chat~=1);
         if lambda > 0
                 PChatA = lambda/2 + (1-lambda).*PChatA;
         end
+        log_P = log(PChatA).*(Chat==1) + log(1-PChatA).*(Chat~=1);
         resp_model = PChatA;
 end
 

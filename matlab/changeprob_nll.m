@@ -12,13 +12,13 @@ switch model
         end
         [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:4), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl);
     case 2
-        [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
     case 3
-        [nLL, rmse, p_estimate, resp_model] = changeprob_exp_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        [nLL, rmse, p_estimate, resp_model] = changeprob_exp_nll(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
     case 4
-        [nLL, rmse, p_estimate, resp_model] = changeprob_RLProb_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        [nLL, rmse, p_estimate, resp_model] = changeprob_RLProb_nll(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
     case 5
         switch task

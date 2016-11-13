@@ -1,5 +1,5 @@
 function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds)
+    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds, fixNoise)
 
 %% CHANGEPROB_LOGMARGLIKE Log marginal likelihood for specified model
 
@@ -23,7 +23,9 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
     % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
         % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w]
     % gridSize: size of parameter grid (e.g., [n x m x p])
-    % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2) 
+    % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
+    % fixNoise: fix noise from measurement session (leave empty for default,
+    %           which is 0 for covert, 1 for overt)
 
 % OUTPUT:
     % lmL: a measure of model fit
@@ -58,6 +60,7 @@ if isnumeric(data); rng(data); data = []; end
 % Task (1 overt, 2 covert)
 if nargin < 3 || isempty(task); task = 1; end % overt-criterion task is the default
 if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt) or 2 (covert).'); end
+if task == 1; taskName = 'overt'; else taskName = 'covert'; end
 
 NumSamples = 5000;
 MaxParams = 7;
@@ -87,9 +90,22 @@ elseif sum(parameters) == 0
     error('You must specify at least one parameter to fit.')
 end
 
+if nargin < 7
+     fixNoise = [];
+end
+
+if isempty(fixNoise)
+    switch task
+        case 1; parameters(1) = 0;  % Overt task: by default noise is fixed
+        case 2; parameters(1) = 1;  % Covert task: by default noise is free
+    end
+else
+    if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
+end
+
 paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax'};
-fitParamNames = paramNames{logical(parameters)};
 NumParams = sum(parameters);
+if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
 % Sampling rate of parameter grid
 if nargin < 5 || isempty(gridSize)
@@ -111,6 +127,10 @@ if NumParams ~= size(paramBounds,1)
     error('Please specify parameter bounds for each parameter to be fit.');
 end
 
+%% Print session
+if fixNoise; noiseString = 'FIXED'; else noiseString = 'FREE'; end
+fprintf('Fitting model %s, %s-criterion task; sensory noise is %s, %d free parameters.\n', potentialModels{model}, taskName, noiseString, NumParams);
+
 %% Get session parameters
 [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
 if task == 1 && model == 5
@@ -120,35 +140,38 @@ else
 end
 
 %% Observer model parameters
-params2fit = zeros(NumParams, gridSize(1));
-for iParam = 1:NumParams
-    switch I_params(iParam)
-        case {1, 2}
-            params2fit(iParam,:) = log(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % sigma_noise
-        case 3
-            params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % lambda
-        case 4
-            params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % gamma
-        case 5
-            params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % alpha
-        case 6
-            params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % w
-        case 7
-            params2fit(iParam,:) = round(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % Tmax (discrete)
+if NumParams > 0
+    params2fit = zeros(NumParams, gridSize(1));
+    for iParam = 1:NumParams
+        switch I_params(iParam)
+            case {1, 2}
+                params2fit(iParam,:) = log(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % sigma_noise
+            case 3
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % lambda
+            case 4
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % gamma
+            case 5
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % alpha
+            case 6
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % w
+            case 7
+                params2fit(iParam,:) = round(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % Tmax (discrete)
+        end
     end
-end
 
-% Create parameter list for fitting
-for iParam = 1:NumParams; params2fit_cell{iParam} = params2fit(iParam,:); end
-params2fit_list = combvec(params2fit_cell{:})';
-params2fit_list(:,1) = exp(params2fit_list(:,1));   % Check this
-clear params2fit_cell;
+    % Create parameter list for fitting
+    for iParam = 1:NumParams; params2fit_cell{iParam} = params2fit(iParam,:); end
+    params2fit_list = combvec(params2fit_cell{:})';    
+    exp_idx = I_params == 1 | I_params == 2;
+    params2fit_list(:,exp_idx) = exp(params2fit_list(:,exp_idx));   % Check this
+    clear params2fit_cell;
+end
 
 % Default parameter values for those not fitted
 inputParams = zeros(1,numel(parameters));
 I_notFit = find(parameters == 0);
 sigmacriterion_def = 5; % Default sigma_criterion
-lapse_def = 0;          % Default lapse (i.e., no lapse)
+lapse_def = 1e-4;       % Default lapse (i.e., tiny lapse)
 gamma_def = Inf;        % Default gamma (i.e., BDT)
 alpha_def = 0.2;        % Default alpha
 w_def     = 1;          % Default w (i.e., no bias)
@@ -156,11 +179,24 @@ Tmax_def  = 0;          % None provided, use default prior window
 notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
+inputParams
+
+%% Separate case if there are no free parameters
+if NumParams == 0
+    [nLL,rmse,resp_model,p_estimate,post] = ...
+        changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
+    lmL = -nLL;     % Log marginal likelihood is simply log likelihood
+    modelPost = [];
+    fitParams = [];    
+    return;
+end
+
+
 %% Choose priors - start with uniformative priors for all parameters
     % These will be uniform for all priors since we took the log of the
     % sigma parameters
     
-% Uniform prior for all parameters    
+% Uniform prior for all parameters
 prior = 1/prod(params2fit(:,end) - params2fit(:,1));
 logprior = log(prior);
 
@@ -202,7 +238,8 @@ lmL = log(Z) + maxlogUpost;
 for iParam = 1:NumParams; bestFit_param(iParam) = params2fit(iParam,idx(iParam)); end
 
 % Transform parameters (check that this is correct)
-fitParams = bestFit_param; fitParams(1) = exp(fitParams(1));
+fitParams = bestFit_param;
+fitParams(exp_idx) = exp(fitParams(exp_idx));
 
 % Recompute additional outputs from best fit params
 inputParams(I_params) = fitParams;

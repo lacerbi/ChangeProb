@@ -1,5 +1,5 @@
 function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_runfit(jobNumber)
+    resp_obs, p_true, p_estimate, post] = changeprob_runfit(jobNumber, fixNoise)
 %RUNFIT Runs model comparison for changing probability experiment
 %   Detailed explanation goes here
 
@@ -10,6 +10,8 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 % Submit RL models
 % ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
 % ./submitfit.sh 3 6,20,34,48,62,76,90,104,118,132,146
+
+if nargin < 2; fixNoise = []; end
 
 subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'};
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
@@ -86,7 +88,7 @@ switch(runModel)
 end
 
 [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters);
+    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters, [], [], fixNoise);
 
 fprintf('MAP parameters:\n');
 fitParams
