@@ -61,8 +61,8 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
             sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
 
             % Category information 
-            % (in the data Category B/Red/Noise is coded as 1, Category A/Green/Signal is coded as 2)
-            C = (data.TrialType == 2);        % Category A/Green/Signal
+            % (in the data Category B is coded as 1, Category A is coded as 2)
+            C = (data.TrialType == 2);        % 1 - A, 0 - B
             C = double(C);
             p_true = data.pA;
             mu = [data.MeanSignal,data.MeanNoise];
@@ -77,6 +77,13 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
             % Shift coordinate system for criterion responses
             I_overt = 5:5:NumTrials;
             resp(I_overt) = bsxfun(@minus, resp(I_overt), mu_bar);
+            % Recode category response such that 1 - A, 0 - B
+            resp_covert = resp;
+            resp_covert(5:5:NumTrials) = [];
+            resp_covert = double(resp_covert == 2);
+            I_covert = 1:NumTrials;
+            I_covert(5:5:NumTrials) = [];
+            resp(I_covert) = resp_covert;
             score = data.score;
         else  
             col = data.SessionOrder(task);     % Column of overt-criterion task
