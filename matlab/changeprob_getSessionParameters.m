@@ -5,27 +5,29 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
 %   INPUT: 
         % data
             % Experimental data struct to be decomposed
-        % task: 1 - overt (default), 2 - covert
+        % task: 1 - overt (default), 2 - covert, 3 - mixed
         % parameters used to generate fake data
             % parameters(1): sensory noise (sigma_ellipse)
             % parameters(2): adjustment noise (sigma_criterion)
+        
 %   OUTPUT:
         % NumTrials: total number of trials
         % sigma_ellipse: sensory noise from calibration data
         % mu: vector containing the category means [muA, muB]
         % sigma: std dev of the internal distributions - sqrt(sigma_s^2 +
         % sigma_v^2)
-        % C: vector of category values
-        % S: vector of true stimulus angles
+        % C: vector of category values (0 - A, 1 - B)
+        % S: vector of true stimulus orientations
         % p_true: vector containing the probability of A
-        % resp: vector containing the fake observer's criterion setting 
-        % (overt task) or categorizations
+        % resp: vector containing the observer's criterion setting 
+        % (overt task), categorizations (covert), or both (mixed)
         % score: 0 - wrong, 1 - correct
         
 %   Author: Elyse Norton
-%   Date: 10/18/16
+%   Date: 12/12/16
 %   email: elyse.norton@gmail.com
         
+
     switch nargin
         case 0
             data = [];
@@ -50,35 +52,63 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
     end
     
     if ~isempty(data)
-        col = data.SessionOrder(task);     % Column of overt-criterion task
-        NumTrials = data.NumTrials;    
+        if task == 3
+            NumTrials = data.NumTrials;    
+            
+            % Noise parameters
+            sigma_s = data.StdDev;
+            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = data.EllipseNoise; end
+            sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
 
-        % Noise parameters
-        sigma_s = data.StdDev;
-        if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = data.EllipseNoise; end
-        sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+            % Category information 
+            % (in the data Category B/Red/Noise is coded as 1, Category A/Green/Signal is coded as 2)
+            C = (data.TrialType == 2);        % Category A/Green/Signal
+            C = double(C);
+            p_true = data.pA;
+            mu = [data.MeanSignal,data.MeanNoise];
 
-        % Category information 
-        % (in the data Category B/Red is coded as 1, Category A/Green is coded as 2)
-        C = (data.Category(:,col) == 2);        % Category A/Green
-        C = double(C);
-        p_true = data.pA(:,col);
-        mu = [data.GreenMean(col),data.RedMean(col)];
+            % Shift coordinate system to zero
+            mu_bar = mean(mu);  
+            mu = bsxfun(@minus, mu, mu_bar);
+            S = bsxfun(@minus, data.TrueAngle, mu_bar); 
 
-        % Shift coordinate system to zero
-        mu_bar = mean(mu);
-        mu = mu - mu_bar;
-        S = data.StimulusAngle(:,col) - mu_bar;
+            % Get task-relevant responses
+            resp = data.response; 
+            % Shift coordinate system for criterion responses
+            I_overt = 5:5:NumTrials;
+            resp(I_overt) = bsxfun(@minus, resp(I_overt), mu_bar);
+            score = data.score;
+        else  
+            col = data.SessionOrder(task);     % Column of overt-criterion task
+            NumTrials = data.NumTrials;    
 
-        % Get task-relevant responses
-        switch task
-            case 1  % Overt-criterion task    
-                resp = data.Criterion(:,col) - mu_bar;   % Reported criterion
-            case 2  % Covert-criterion task
-                resp = data.Response(:,col) == 2;
-                resp = double(resp);
-        end
-        score = data.Score(:,col);
+            % Noise parameters
+            sigma_s = data.StdDev;
+            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = data.EllipseNoise; end
+            sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+
+            % Category information 
+            % (in the data Category B/Red is coded as 1, Category A/Green is coded as 2)
+            C = (data.Category(:,col) == 2);        % Category A/Green
+            C = double(C);
+            p_true = data.pA(:,col);
+            mu = [data.GreenMean(col),data.RedMean(col)];
+
+            % Shift coordinate system to zero
+            mu_bar = mean(mu);
+            mu = bsxfun(@minus, mu, mu_bar);
+            S = bsxfun(@minus, data.StimulusAngle(:,col), mu_bar);
+
+            % Get task-relevant responses
+            switch task
+                case 1  % Overt-criterion task    
+                    resp = bsxfun(@minus, data.Criterion(:,col), mu_bar);   % Reported criterion
+                case 2  % Covert-criterion task
+                    resp = data.Response(:,col) == 2;
+                    resp = double(resp);
+            end
+            score = data.Score(:,col);
+        end   
     else  
         % Create fake data
         NumTrials = 800;
@@ -102,11 +132,11 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
         p_true = p_true(1:NumTrials);
 
         % Generate stimuli based on category labels
-        S = mu(C)' + sigma_s*randn(NumTrials,1);
-        X = S + sigma_ellipse*randn(NumTrials,1);
+        S = bsxfun(@plus, mu(C)', sigma_s*randn(NumTrials,1));
+        X = bsxfun(@plus, S, sigma_ellipse*randn(NumTrials,1));
 
         % Responses based on fixed criterion (fixed at the neutral criterion)
-        z_resp = mean(mu) + sigma_criterion*randn(NumTrials,1);
+        z_resp = bsxfun(@plus, mean(mu), sigma_criterion*randn(NumTrials,1));
         resp(:,1) = z_resp;
 
         Chat = ones(NumTrials,1);
@@ -119,7 +149,7 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
         % Score
         scoreOvert = zeros(NumTrials, 1);
         I = find(or(and(C == 1, S <= z_resp), and(C == 2, S > z_resp)));
-        scoreOvert(I) = scoreOvert(I)+1;
+        scoreOvert(I) = bsxfun(@plus, scoreOvert(I), 1);
         score(:,1) = scoreOvert;
 
         scoreCovert = zeros(NumTrials, 1);
