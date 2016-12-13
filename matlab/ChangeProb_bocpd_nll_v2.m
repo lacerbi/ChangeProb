@@ -22,10 +22,10 @@ end
 if nargin < 2; error('You must specify the session parameters.'); end
 
 % Task (1 overt, 2 covert)
-if nargin < 9 || isempty(task); task = 1; end
-if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt-criterion) or 2 (covert-criterion).'); end
+if nargin < 10 || isempty(task); task = 1; end
+if task ~= 1 && task ~= 2 && task ~=3; error('TASK can only be 1 (overt-criterion), 2 (covert-criterion), or 3 (mixed).'); end
 
-if nargin < 10 || isempty(prior_rl)
+if nargin < 11 || isempty(prior_rl)
     prior_rl = [80,120];    % Default runlengths
 end
 
@@ -46,6 +46,8 @@ L = diff(prior_rl)+1;           % Number of elements
 %end
 Nprobs = numel(p_vec);              % # states
 
+p_bias = .5;
+
 %% Observer model parameters
 
 switch numel(parameters)
@@ -53,22 +55,45 @@ switch numel(parameters)
         sigma_criterion = sigma_ellipse;
         lambda = 0;
         gamma = Inf;
+        w = 1;
     case 1
         sigma_ellipse = parameters(1);
+        sigma_criterion = sigma_ellipse;
+        lambda = 0;
+        gamma = Inf;
+        w = 1;
     case 2
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
+        lambda = 0;
+        gamma = Inf;
+        w = 1;
     case 3
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
+        gamma = Inf;
+        w = 1;
     case 4
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
         gamma = parameters(4);
+        w = 1;
+    case 5
+        sigma_ellipse = parameters(1);
+        sigma_criterion = parameters(2);
+        lambda = parameters(3);
+        gamma = parameters(4);
+        w = 1;
+    case 6
+        sigma_ellipse = parameters(1);
+        sigma_criterion = parameters(2);
+        lambda = parameters(3);
+        gamma = parameters(4);
+        w = parameters(6);
     otherwise
-        error('PARAMETERS should be a vector with up to four parameters.');
+        error('PARAMETERS should be a vector with up to six parameters.');
 end
 
 %% Initialize inference
@@ -91,12 +116,12 @@ Tmat(1,:,:) = (ones(Nprobs,Nprobs) - eye(Nprobs)) / (Nprobs-1);
 p_vec3(1,1,:) = p_vec;
 
 % Auxiliary variables for covert-criterion task
-if task == 2
+if task == 2 || task == 3
     nx = 1001;  % Measurement grid size
     MAXSD = 5;  % When integrating a Gaussian go up to this distance
     X = bsxfun(@plus, S, sigma_ellipse*MAXSD*linspace(-1,1,nx));
-    w = normpdf(linspace(-MAXSD,MAXSD,nx));
-    w = w./qtrapz(w);
+    W = normpdf(linspace(-MAXSD,MAXSD,nx));
+    W = W./qtrapz(W);
 end
 
 %% Begin loop over trials
@@ -107,53 +132,83 @@ PCx = [];
 
 for t = 1:NumTrials
     %t
-    if task == 2; Xt = X(t,:); else Xt = []; end    
-    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,mu,sigma,task);
+    if task == 2 || and(task == 3, mod(t,5) ~= 0); Xt = X(t,:); else Xt = []; end    
+    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,mu,sigma,task,t);
     tt = nansum(post,2);
 
     % The predictive posterior is about the next trial
     P(t+1,:) = pi_post;
     last(t,:) = tt/sum(tt);
     
-    % Record conditional posterior for covert-criterion task
-    if task == 2
+    % Compute predicted criterion for the overt task
+    pA_t = sum(bsxfun(@times, P(t,:), p_vec(:)'),2);
+    pB_t = sum(bsxfun(@times, P(t,:), 1-p_vec(:)'), 2);
+    pA_t_bias = bsxfun(@plus, w*pA_t, (1-w)*p_bias);
+    pB_t_bias = bsxfun(@plus, w*pB_t, (1-w)*p_bias);
+    %Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
+    Gamma_t = pA_t_bias./pB_t_bias;
+    z_opt = sigma^2 * log(Gamma_t) / diff(mu);
+
+    if task == 1 || and(task == 3, mod(t,5) == 0)
+        % Log probability of overt task responses
+        log_P(t) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(t)-z_opt)./sigma_criterion).^2;
+        if lambda > 0
+            log_P(t) = log(lambda/360 + (1-lambda)*exp(log_P(t)));    
+        end
+        resp_model(t) = z_opt;
+    else
+        % Record conditional posterior for covert-criterion task
         if isempty(PCx); PCx = zeros(NumTrials,size(PCxA,2)); end
         PCx(t,:) = PCxA;
+        Pcx = 1./(1 + ((1-PCx(t,:))./PCx(t,:)).^gamma);       % Softmax        
+        PChatA = qtrapz(bsxfun(@times,Pcx,W),2);         % Marginalize over noise
+        PChatA = w*PChatA + (1-w)*p_bias;                     % Add conservative bias
+        lambda = max(1e-4,lambda);                            % Minimum lapse to avoid numerical trouble
+        PChatA = lambda/2 + (1-lambda)*PChatA;
+
+        % Log probability of covert task responses
+        log_P(t) = log(PChatA).*(resp_obs(t) == 1) + log(1-PChatA).*(resp_obs(t) ~= 1);
+        resp_model(t) = PChatA;
     end
 end
 
 %% Compute log likelihood
-switch task
-    case 1  % Overt-criterion task
-        
-        % Compute predicted criterion for the overt task
-        Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
-        z_opt = sigma^2 * log(Gamma_t) / diff(mu);
+% switch task
+%     case 1  % Overt-criterion task
+%         
+%         % Compute predicted criterion for the overt task
+%         Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
+%         Gamma_t = pA_t_bias./pB_t_bias;
+%         z_opt = sigma^2 * log(Gamma_t) / diff(mu);
+% 
+%         % Log probability of overt task responses
+%         log_Pz = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs-z_opt(1:NumTrials))./sigma_criterion).^2;
+%         if lambda > 0
+%             log_Pz = log(lambda/360 + (1-lambda)*exp(log_Pz));    
+%         end
+% 
+%         % Sum negative log likelihood
+%         nLL = -nansum(log_Pz);
+%         resp_model = z_opt(1:NumTrials);
+%         
+%     case 2  % Covert-criterion task
+%         
+%         Pcx = 1./(1 + ((1-PCx)./PCx).^gamma);       % Softmax        
+%         PChatA = qtrapz(bsxfun(@times,Pcx,W),2);    % Marginalize over noise
+%         lambda = max(1e-4,lambda);                  % Minimum lapse to avoid numerical trouble
+%         PChatA = lambda/2 + (1-lambda)*PChatA;
+%         
+%         % Log probability of covert task responses
+%         log_PChat = log(PChatA).*(resp_obs == 1) + log(1-PChatA).*(resp_obs ~= 1);
+%         
+%         % Sum negative log likelihood
+%         nLL = -nansum(log_PChat);   
+%         resp_model = PChatA(1:NumTrials);
+% end
 
-        % Log probability of overt task responses
-        log_Pz = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs-z_opt(1:NumTrials))./sigma_criterion).^2;
-        if lambda > 0
-            log_Pz = log(lambda/360 + (1-lambda)*exp(log_Pz));    
-        end
 
-        % Sum negative log likelihood
-        nLL = -nansum(log_Pz);
-        resp_model = z_opt(1:NumTrials);
-        
-    case 2  % Covert-criterion task
-        
-        Pcx = 1./(1 + ((1-PCx)./PCx).^gamma);       % Softmax        
-        PChatA = qtrapz(bsxfun(@times,Pcx,w),2);    % Marginalize over noise
-        lambda = max(1e-4,lambda);                  % Minimum lapse to avoid numerical trouble
-        PChatA = lambda/2 + (1-lambda)*PChatA;
-        
-        % Log probability of covert task responses
-        log_PChat = log(PChatA).*(resp_obs == 1) + log(1-PChatA).*(resp_obs ~= 1);
-        
-        % Sum negative log likelihood
-        nLL = -nansum(log_PChat);   
-        resp_model = PChatA(1:NumTrials);
-end
+% Sum negative log likelihood
+nLL = -nansum(log_P);
 
 % RMSE between predictive posterior probability and true category probability
 meanP = sum(bsxfun(@times,p_vec,P(1:NumTrials,:)),2);
@@ -163,7 +218,7 @@ rmse = sqrt(mean((meanP - p_true).^2));
 end
 
 %--------------------------------------------------------------------------
-function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,mu,sigma,task)
+function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,mu,sigma,task, trial)
 %BAYESIANCPDUPDATE Bayesian online changepoint detection update
 
     %if mod(t,100) == 0
@@ -180,7 +235,7 @@ function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,
     
     %----------------------------------------------------------------------
     % 2. Compute probability of response for covert-criterion task
-    if task == 2
+    if task == 2 || and(task == 3, mod(trial,5) ~= 0)
         pxCatA = exp(-0.5*((X-mu(1))./sigma).^2);
         pxCatB = exp(-0.5*((X-mu(2))./sigma).^2);
 
