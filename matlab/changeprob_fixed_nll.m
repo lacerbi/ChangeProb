@@ -8,7 +8,7 @@ function [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(parameters, 
 
 % Generate fake data and set default parameter vector
 % Parameter vector: #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, 
-% #4 is GAMMA, #5 is ALPHA, #6 is W, #7 is Tmax
+% #4 is GAMMA, #5 is ALPHA, and #6 is W
 if nargin < 1 || isempty(parameters)
     [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters();
     parameters = [sigma_ellipse, sigma_ellipse, 1e-4, Inf, .2, 1, 0];
