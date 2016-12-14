@@ -20,8 +20,9 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
     % task: lets you choose which task to fit
         % 1 - overt-criterion task
         % 2 - covert-criterion task
+        % 3 - mixed design (overt-criterion task on every 5th trial)
     % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
-        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w]
+        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax]
     % gridSize: size of parameter grid (e.g., [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
@@ -44,7 +45,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     11/06/2016
+% Date:     12/14/2016
     
 %tic
 % Model to be fit
@@ -59,8 +60,8 @@ if isnumeric(data); rng(data); data = []; end
 
 % Task (1 overt, 2 covert)
 if nargin < 3 || isempty(task); task = 1; end % overt-criterion task is the default
-if task ~= 1 && task ~= 2; error('TASK can only be 1 (overt) or 2 (covert).'); end
-if task == 1; taskName = 'overt'; else taskName = 'covert'; end
+if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (covert), or 3 (mixed).'); end
+if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
 MaxParams = 7;
@@ -81,6 +82,12 @@ if nargin < 4 || isempty(parameters)
             else
                 parameters([1,5]) = 1;
             end
+        case 3
+            if model < 3
+                parameters(2) = 1;
+            else
+                parameters([2,5]) = 1;
+            end
     end
     if nargin < 4
         gridSize = [];
@@ -98,6 +105,7 @@ if isempty(fixNoise)
     switch task
         case 1; parameters(1) = 0;  % Overt task: by default noise is fixed
         case 2; parameters(1) = 1;  % Covert task: by default noise is free
+        case 3; parameters(1) = 0;  % Mixed task: by default noise is fixed
     end
 else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
@@ -133,7 +141,7 @@ fprintf('Fitting model %s, %s-criterion task; sensory noise is %s, %d free param
 
 %% Get session parameters
 [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
-if task == 1 && model == 5
+if and(task == 1, model == 5) || and(task == 3, model == 5)
     X = bsxfun(@plus, S, sigma_ellipse*randn(numel(S), NumSamples));
 else
     X = [];
@@ -190,7 +198,6 @@ if NumParams == 0
     fitParams = [];    
     return;
 end
-
 
 %% Choose priors - start with uniformative priors for all parameters
     % These will be uniform for all priors since we took the log of the
