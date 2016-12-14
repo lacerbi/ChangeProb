@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     11/5/2016
+% Date:     12/14/2016
 
 % Submit RL models
 % ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
@@ -14,16 +14,19 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 if nargin < 2; fixNoise = []; end
 
 subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'};
+subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
     'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior'};
+    'subBayesian_rlprior', 'subBayesian_conservative'};
 
 Nsubjs = numel(subID);
+Nsubjs_mixed = numel(subID_mixed);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 
-% Job number ranges from 1 to 176 (11 subjects x 2 tasks x 8 models)
-maxID = Nsubjs*Ntasks*Nmodels;
+% Job number ranges from 1 to 261 (11 subjects x 2 tasks x 9 models + 7 subjects x 9 models)
+maxID = Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels;
+maxID_mixed = Nsubjs_mixed*Nmodels;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
 end
@@ -31,20 +34,35 @@ end
 rng(jobNumber);     % Fix random seed
 
 % Which subject?
-subIndex = rem(jobNumber-1,Nsubjs)+1;
-runSubject = subID{subIndex};
+if jobNumber <= Nsubjs*Ntasks*Nmodels 
+    subIndex = rem(jobNumber-1,Nsubjs)+1;
+    runSubject = subID{subIndex};
+else
+    jobNumber_mixed = jobNumber - Nsubjs*Ntasks*Nmodels;
+    subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
+    runSubject = subID_mixed{subIndex};
+end
 
 % Which task?
-if rem(jobNumber-1, Nsubjs*Ntasks) < Nsubjs
-    task = 1;
-    taskName = 'Overt';
+if jobNumber <= Nsubjs*Ntasks*Nmodels
+    if rem(jobNumber-1, Nsubjs*Ntasks) < Nsubjs
+        task = 1;
+        taskName = 'Overt';
+    else
+        task = 2;
+        taskName = 'Covert';
+    end
 else
-    task = 2;
-    taskName = 'Covert';
+    task = 3;
+    taskName = 'Mixed';
 end
 
 % Which model?
-modelIndex = ceil(jobNumber/(Nsubjs*Ntasks));
+if jobNumber <= Nsubjs*Ntasks*Nmodels
+    modelIndex = ceil(jobNumber/(Nsubjs*Ntasks));
+else
+    modelIndex = ceil(jobNumber_mixed/Nsubjs_mixed);
+end
 runModel = models{modelIndex};
 
 % Save file name
@@ -57,13 +75,17 @@ parameters = [];
 matlabdir = fileparts(which('changeprob_mL'));
 basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
 addpath(genpath(basedir));
-load(['ChangingProbabilities_', runSubject]); % Load data
+if task == 3
+    load('ChangingProbabilitiesMixed_', runSubject);
+else
+    load(['ChangingProbabilities_', runSubject]); % Load data
+end
 
 switch(runModel)
     case 'exponential_conservative'
         runModel = 'exponential';
         if isempty(parameters)
-            if task == 1
+            if task == 1 || task == 3
                 parameters = [0 1 0 0 1 1 0];
             else
                 parameters = [1 0 0 0 1 1 0];
@@ -72,7 +94,7 @@ switch(runModel)
     case 'RL_probability_conservative'
         runModel = 'RL_probability';
         if isempty(parameters)
-            if task == 1
+            if task == 1 || task == 3
                 parameters = [0 1 0 0 1 1 0];
             else
                 parameters = [1 0 0 0 1 1 0];
@@ -80,11 +102,18 @@ switch(runModel)
         end
     case 'subBayesian_rlprior'
         runModel = 'idealBayesian';
-        if task == 1
+        if task == 1 || task == 3
             parameters = [0 1 0 0 0 0 1];
         else
             parameters = [1 0 0 0 0 0 1];
-        end    
+        end
+    case 'subBayesian_conservative'
+        runModel = 'idealBayesian';
+        if task == 1 || task == 3
+            parameters = [0 1 0 0 0 1 0];
+        else
+            parameters = [1 0 0 0 0 1 0];
+        end
 end
 
 [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
