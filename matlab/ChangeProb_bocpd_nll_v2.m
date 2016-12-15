@@ -1,4 +1,4 @@
-function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl)
+function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec)
 %CHANGEPROB_BOCPD_NLL Bayesian online changepoint detection observer.
 % (Documentation to be written.)
 %
@@ -14,6 +14,7 @@ function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(par
 if nargin < 1
     parameters = [];
     prior_rl = [];
+    p_vec = [];
     [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters();
     task = 1; 
 end
@@ -29,6 +30,10 @@ if nargin < 11 || isempty(prior_rl)
     prior_rl = [80,120];    % Default runlengths
 end
 
+if nargin < 12 || isempty(p_vec)
+    p_vec = linspace(0.2,0.8,5); % Default states
+end
+
 %% Experiment constants
 
 % Run length ~ Uniform[prior_rl(1),prior_rl(2)]
@@ -42,11 +47,17 @@ L = diff(prior_rl)+1;           % Number of elements
 % if isfield(options,'p_vec') && ~isempty(options.p_vec)
 %     p_vec = options.p_vec;
 % else
-    p_vec = linspace(0.2,0.8,5);    % Default states
+%     p_vec = linspace(0.2,0.8,5);    % Default states
 %end
 Nprobs = numel(p_vec);              % # states
 
 p_bias = .5;
+
+if task == 3
+    idx_Overt = 5:5:NumTrials;
+    idx_Covert = 1:NumTrials;
+    idx_Covert(idx_Overt) = [];
+end
 
 %% Observer model parameters
 
@@ -93,7 +104,7 @@ switch numel(parameters)
         gamma = parameters(4);
         w = parameters(6);
     otherwise
-        error('PARAMETERS should be a vector with up to six parameters.');
+        error('PARAMETERS should be a vector with up to eight parameters.');
 end
 
 %% Initialize inference
@@ -140,75 +151,76 @@ for t = 1:NumTrials
     P(t+1,:) = pi_post;
     last(t,:) = tt/sum(tt);
     
-    % Compute predicted criterion for the overt task
-    pA_t = sum(bsxfun(@times, P(t,:), p_vec(:)'),2);
-    pB_t = sum(bsxfun(@times, P(t,:), 1-p_vec(:)'), 2);
-    pA_t_bias = bsxfun(@plus, w*pA_t, (1-w)*p_bias);
-    pB_t_bias = bsxfun(@plus, w*pB_t, (1-w)*p_bias);
-    %Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
-    Gamma_t = pA_t_bias./pB_t_bias;
-    z_opt = sigma^2 * log(Gamma_t) / diff(mu);
-
-    if task == 1 || and(task == 3, mod(t,5) == 0)
-        % Log probability of overt task responses
-        log_P(t) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(t)-z_opt)./sigma_criterion).^2;
-        if lambda > 0
-            log_P(t) = log(lambda/360 + (1-lambda)*exp(log_P(t)));    
-        end
-        resp_model(t) = z_opt;
-    else
-        % Record conditional posterior for covert-criterion task
+    % Record conditional posterior for covert-criterion task
+    if task == 2 || and(task == 3, mod(t,5) ~=0)
         if isempty(PCx); PCx = zeros(NumTrials,size(PCxA,2)); end
         PCx(t,:) = PCxA;
-        Pcx = 1./(1 + ((1-PCx(t,:))./PCx(t,:)).^gamma);       % Softmax        
-        PChatA = qtrapz(bsxfun(@times,Pcx,W),2);         % Marginalize over noise
-        PChatA = w*PChatA + (1-w)*p_bias;                     % Add conservative bias
-        lambda = max(1e-4,lambda);                            % Minimum lapse to avoid numerical trouble
-        PChatA = lambda/2 + (1-lambda)*PChatA;
-
-        % Log probability of covert task responses
-        log_P(t) = log(PChatA).*(resp_obs(t) == 1) + log(1-PChatA).*(resp_obs(t) ~= 1);
-        resp_model(t) = PChatA;
     end
 end
 
 %% Compute log likelihood
-% switch task
-%     case 1  % Overt-criterion task
-%         
-%         % Compute predicted criterion for the overt task
-%         Gamma_t = sum(bsxfun(@times, P, p_vec(:)'),2) ./ sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
-%         Gamma_t = pA_t_bias./pB_t_bias;
-%         z_opt = sigma^2 * log(Gamma_t) / diff(mu);
-% 
-%         % Log probability of overt task responses
-%         log_Pz = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs-z_opt(1:NumTrials))./sigma_criterion).^2;
-%         if lambda > 0
-%             log_Pz = log(lambda/360 + (1-lambda)*exp(log_Pz));    
-%         end
-% 
-%         % Sum negative log likelihood
-%         nLL = -nansum(log_Pz);
-%         resp_model = z_opt(1:NumTrials);
-%         
-%     case 2  % Covert-criterion task
-%         
-%         Pcx = 1./(1 + ((1-PCx)./PCx).^gamma);       % Softmax        
-%         PChatA = qtrapz(bsxfun(@times,Pcx,W),2);    % Marginalize over noise
-%         lambda = max(1e-4,lambda);                  % Minimum lapse to avoid numerical trouble
-%         PChatA = lambda/2 + (1-lambda)*PChatA;
-%         
-%         % Log probability of covert task responses
-%         log_PChat = log(PChatA).*(resp_obs == 1) + log(1-PChatA).*(resp_obs ~= 1);
-%         
-%         % Sum negative log likelihood
-%         nLL = -nansum(log_PChat);   
-%         resp_model = PChatA(1:NumTrials);
-% end
 
+% Compute predicted criterion
+pA_t = sum(bsxfun(@times, P, p_vec(:)'),2);
+pB_t = sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
+pA_t_bias = bsxfun(@plus, w*pA_t, (1-w)*p_bias);
+pB_t_bias = bsxfun(@plus, w*pB_t, (1-w)*p_bias);
+Gamma_t = pA_t_bias./pB_t_bias;
+z_opt = sigma^2 * log(Gamma_t) / diff(mu);
+z_opt = z_opt(1:NumTrials);
+        
+switch task
+    case 1  % Overt-criterion task
 
-% Sum negative log likelihood
-nLL = -nansum(log_P);
+        % Log probability of overt task responses
+        log_Pz = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs-z_opt)./sigma_criterion).^2;
+        if lambda > 0
+            log_Pz = log(lambda/360 + (1-lambda)*exp(log_Pz));    
+        end
+
+        % Sum negative log likelihood
+        nLL = -nansum(log_Pz);
+        resp_model = z_opt;
+        
+    case 2  % Covert-criterion task
+        
+        Pcx = 1./(1 + ((1-PCx)./PCx).^gamma);       % Softmax        
+        PChatA = qtrapz(bsxfun(@times,Pcx,W),2);    % Marginalize over noise
+        PChatA_bias = w*PChatA + (1-w)*p_bias;      % Conservative bias when w < 1
+        lambda = max(1e-4,lambda);                  % Minimum lapse to avoid numerical trouble
+        PChatA_bias = lambda/2 + (1-lambda)*PChatA_bias;
+        
+        % Log probability of covert task responses
+        log_PChat = log(PChatA_bias).*(resp_obs == 1) + log(1-PChatA_bias).*(resp_obs ~= 1);
+        
+        % Sum negative log likelihood
+        nLL = -nansum(log_PChat);   
+        resp_model = PChatA_bias(1:NumTrials);
+    case 3  % Mixed design task
+        
+        log_P = zeros(1, NumTrials);
+        resp_model = zeros(1, NumTrials);
+        % Log probability of overt task responses
+        log_P(idx_Overt) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(idx_Overt)-z_opt(idx_Overt))./sigma_criterion).^2;
+        if lambda > 0
+            log_P(idx_Overt) = log(lambda/360 + (1-lambda)*exp(log_P(idx_Overt)));    
+        end
+        resp_model(idx_Overt) = z_opt(idx_Overt);
+        
+        % Log probability of covert task responses
+        PCx = PCx(idx_Covert,:);
+        Pcx = 1./(1 + ((1-PCx)./PCx).^gamma);       % Softmax        
+        PChatA = qtrapz(bsxfun(@times,Pcx,W),2);    % Marginalize over noise
+        PChatA_bias = w*PChatA + (1-w)*p_bias;      % Conservative bias when w < 1
+        lambda = max(1e-4,lambda);                  % Minimum lapse to avoid numerical trouble
+        PChatA_bias = lambda/2 + (1-lambda)*PChatA_bias;
+        
+        log_P(idx_Covert) = log(PChatA_bias).*(resp_obs(idx_Covert) == 1) + log(1-PChatA_bias).*(resp_obs(idx_Covert) ~= 1);
+        resp_model(idx_Covert) = PChatA_bias;
+        
+        % Sum negative log likelihood
+        nLL = -nansum(log_P);
+end
 
 % RMSE between predictive posterior probability and true category probability
 meanP = sum(bsxfun(@times,p_vec,P(1:NumTrials,:)),2);

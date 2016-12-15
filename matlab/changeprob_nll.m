@@ -10,7 +10,12 @@ switch model
         else
             prior_rl = [max(1,floor(inputParams(7)*2/3)),inputParams(7)];
         end
-        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl);
+        if inputParams(8) == 0
+            p_vec = [];
+        else
+            p_vec = linspace(inputParams(8), 1-inputParams(8), 5);
+        end
+        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec);
     case 2
         [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
@@ -28,7 +33,7 @@ switch model
                 X = bsxfun(@plus, S, inputParams(1)*randn(numel(S), 5000));
                 [resp_model, logP] = RLobserver_covert_mex([inputParams(1), inputParams(5)],sigma,diff(mu),X,.5,resp_obs,score);
             case 3
-                [resp_model, logP] = RLobserver_mixed_mex([inputParams(2), inputParams(5)],sigma,diff(mu),X,.5,resp_obs,score);
+                [resp_model, logP] = RLobserver_mixed([inputParams(2), inputParams(5)],sigma,diff(mu),X,.5,resp_obs,score);
         end
         % Marginalize over x (in likelihood space NOT log likelihood space)
         maxLL = max(logP(:));

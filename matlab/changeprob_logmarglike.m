@@ -22,11 +22,11 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
         % 2 - covert-criterion task
         % 3 - mixed design (overt-criterion task on every 5th trial)
     % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
-        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax]
+        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec]
     % gridSize: size of parameter grid (e.g., [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
-    %           which is 0 for covert, 1 for overt)
+    %           which is 0 for covert, 1 for overt, and 1 for mixed)
 
 % OUTPUT:
     % lmL: a measure of model fit
@@ -45,7 +45,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     12/14/2016
+% Date:     12/15/2016
     
 %tic
 % Model to be fit
@@ -64,7 +64,7 @@ if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (co
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
-MaxParams = 7;
+MaxParams = 8;
 
 % Parameters to be fit
 if nargin < 4 || isempty(parameters)
@@ -111,7 +111,7 @@ else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec'};
 NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
@@ -127,7 +127,7 @@ end
 
 % Lower and upper parameter bounds
 if nargin < 6 || isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -184,7 +184,8 @@ gamma_def = Inf;        % Default gamma (i.e., BDT)
 alpha_def = 0.2;        % Default alpha
 w_def     = 1;          % Default w (i.e., no bias)
 Tmax_def  = 0;          % None provided, use default prior window
-notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def];
+pVec_def = 0;           % None provided, use default probability vector
+notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams

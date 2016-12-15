@@ -42,6 +42,11 @@ p_initial = .5;
 p_estimate = bsxfun(@plus, zeros(NumTrials,1), p_initial); % Assume probability is fixed throughout the experimental block
 beta = p_estimate./(1-p_estimate);
 z_model = sigma^2 * log(beta)/diff(mu);
+if task == 3
+    idx_Overt = 5:5:NumTrials;
+    idx_Covert = 1:NumTrials;
+    idx_Covert(idx_Overt) = [];
+end
 
 switch task
     case 1
@@ -59,22 +64,23 @@ switch task
         resp_model = PChatA;
     case 3
         log_P = zeros(1, NumTrials);
-        PChatA = 1 - normcdf(S, z_model, sigma_ellipse);
+        resp_model = zeros(1, NumTrials);
+        
+        % Log probability of overt responses
+        log_P(idx_Overt) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(idx_Overt)-z_model(idx_Overt))./sigma_criterion).^2;
+        if lambda > 0
+            log_P(idx_Overt) = log(lambda/360 + (1-lambda).*exp(log_P(idx_Overt)));
+        end
+        
+        % Log probability of covert responses
+        PChatA = 1 - normcdf(S(idx_Covert), z_model(idx_Covert), sigma_ellipse);
         if lambda > 0
             PChatA = lambda/2 + (1-lambda).*PChatA;
         end
-        for i = 1:NumTrials
-            if mod(i, 5) == 0
-                log_P(i) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(i)-z_model(i))./sigma_criterion).^2;
-                if lambda > 0
-                    log_P(i) = log(lambda/360 + (1-lambda).*exp(log_P(i)));
-                end
-            else
-                log_P(i) = log(PChatA(i)).*(resp_obs(i)==1) + log(1-PChatA(i)).*(resp_obs(i)~=1);
-            end
-        end
-        resp_model = PChatA;
-        resp_model(5:5:NumTrials) = z_model(5:5:NumTrials);
+        log_P(idx_Covert) = log(PChatA).*(resp_obs(idx_Covert)==1) + log(1-PChatA).*(resp_obs(idx_Covert)~=1);
+        
+        resp_model(idx_Covert) = PChatA;
+        resp_model(idx_Overt) = z_model(idx_Overt);
 end
 
 nLL = -nansum(log_P);

@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     12/14/2016
+% Date:     12/15/2016
 
 % Submit RL models
 % ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
@@ -17,14 +17,14 @@ subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'S
 subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
     'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior', 'subBayesian_conservative'};
+    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'};
 
 Nsubjs = numel(subID);
 Nsubjs_mixed = numel(subID_mixed);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 
-% Job number ranges from 1 to 261 (11 subjects x 2 tasks x 9 models + 7 subjects x 9 models)
+% Job number ranges from 1 to 290 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models)
 maxID = Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels;
 maxID_mixed = Nsubjs_mixed*Nmodels;
 if jobNumber < 1 || jobNumber > maxID
@@ -86,33 +86,40 @@ switch(runModel)
         runModel = 'exponential';
         if isempty(parameters)
             if task == 1 || task == 3
-                parameters = [0 1 0 0 1 1 0];
+                parameters = [0 1 0 0 1 1 0 0];
             else
-                parameters = [1 0 0 0 1 1 0];
+                parameters = [1 0 0 0 1 1 0 0];
             end
         end
     case 'RL_probability_conservative'
         runModel = 'RL_probability';
         if isempty(parameters)
             if task == 1 || task == 3
-                parameters = [0 1 0 0 1 1 0];
+                parameters = [0 1 0 0 1 1 0 0];
             else
-                parameters = [1 0 0 0 1 1 0];
+                parameters = [1 0 0 0 1 1 0 0];
             end
         end
     case 'subBayesian_rlprior'
         runModel = 'idealBayesian';
         if task == 1 || task == 3
-            parameters = [0 1 0 0 0 0 1];
+            parameters = [0 1 0 0 0 0 1 0];
         else
-            parameters = [1 0 0 0 0 0 1];
+            parameters = [1 0 0 0 0 0 1 0];
         end
     case 'subBayesian_conservative'
         runModel = 'idealBayesian';
         if task == 1 || task == 3
-            parameters = [0 1 0 0 0 1 0];
+            parameters = [0 1 0 0 0 1 0 0];
         else
-            parameters = [1 0 0 0 0 1 0];
+            parameters = [1 0 0 0 0 1 0 0];
+        end
+    case 'subBayesian_pVec'
+        runModel = 'idealBayesian';
+        if task == 1 || task == 3
+            parameters = [0 1 0 0 0 1 0 1];
+        else
+            parameters = [1 0 0 0 0 1 0 1];
         end
 end
 
