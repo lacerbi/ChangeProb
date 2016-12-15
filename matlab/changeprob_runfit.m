@@ -76,7 +76,7 @@ matlabdir = fileparts(which('changeprob_mL'));
 basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
 addpath(genpath(basedir));
 if task == 3
-    load('ChangingProbabilitiesMixed_', runSubject);
+    load(['ChangingProbabilitiesMixed_', runSubject]);
 else
     load(['ChangingProbabilities_', runSubject]); % Load data
 end
