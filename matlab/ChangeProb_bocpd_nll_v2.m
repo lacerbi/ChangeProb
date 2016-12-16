@@ -247,7 +247,7 @@ function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,
     
     %----------------------------------------------------------------------
     % 2. Compute probability of response for covert-criterion task
-    if task == 2 || and(task == 3, mod(trial,5) ~= 0)
+    if task == 2 || (task == 3 && mod(trial,5) ~= 0)
         pxCatA = exp(-0.5*((X-mu(1))./sigma).^2);
         pxCatB = exp(-0.5*((X-mu(2))./sigma).^2);
 

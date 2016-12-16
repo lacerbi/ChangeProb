@@ -23,7 +23,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
         % 3 - mixed design (overt-criterion task on every 5th trial)
     % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
         % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec]
-    % gridSize: size of parameter grid (e.g., [n x m x p])
+    % gridSize: size of parameter grid (e.g., n or [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
     %           which is 0 for covert, 1 for overt, and 1 for mixed)
@@ -47,6 +47,13 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
 % Date:     12/15/2016
     
+if nargin < 2; data = []; end
+if nargin < 3; task = []; end
+if nargin < 4; parameters = []; end
+if nargin < 5; gridSize = []; end
+if nargin < 6; paramBounds = []; end
+if nargin < 7; fixNoise = []; end
+
 %tic
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
@@ -55,11 +62,11 @@ potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ..
 model = find(strcmp(model, potentialModels)); % recode model to numeric value
 
 % Data struct or random seed for fake data generation
-if nargin < 2 || isempty(data); data = 0; end
+if isempty(data); data = 0; end
 if isnumeric(data); rng(data); data = []; end
 
 % Task (1 overt, 2 covert)
-if nargin < 3 || isempty(task); task = 1; end % overt-criterion task is the default
+if isempty(task); task = 1; end % overt-criterion task is the default
 if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (covert), or 3 (mixed).'); end
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
@@ -67,7 +74,7 @@ NumSamples = 5000;
 MaxParams = 8;
 
 % Parameters to be fit
-if nargin < 4 || isempty(parameters)
+if isempty(parameters)
     parameters = zeros(1,MaxParams);    
     switch task
         case 1
@@ -89,16 +96,8 @@ if nargin < 4 || isempty(parameters)
                 parameters([2,5]) = 1;
             end
     end
-    if nargin < 4
-        gridSize = [];
-        paramBounds = [];
-    end
 elseif sum(parameters) == 0
     error('You must specify at least one parameter to fit.')
-end
-
-if nargin < 7
-     fixNoise = [];
 end
 
 if isempty(fixNoise)
@@ -116,17 +115,17 @@ NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
 % Sampling rate of parameter grid
-if nargin < 5 || isempty(gridSize)
+if isempty(gridSize)
     gridSize = 100*ones(1, NumParams); % Default grid is 100 x 100
-    if nargin < 5
-        paramBounds = [];
-    end
+elseif isscalar(gridSize)
+    gridSize = gridSize*ones(1, NumParams);
 elseif numel(gridSize) ~= NumParams
     error('Matrix dimensions do not agree. numel(gridSize) must equal sum(parameters).');
 end
+fprintf('Grid for computation of the marginal likelihood has %d nodes.\n', prod(gridSize));
 
 % Lower and upper parameter bounds
-if nargin < 6 || isempty(paramBounds)    
+if isempty(paramBounds)    
     paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5];    
     paramBounds = paramBounds_def(I_params,:);
 end
@@ -212,7 +211,10 @@ logprior = log(prior);
 
 nLL_mat = zeros([gridSize,1]);
 maxii = prod(gridSize);
+timestart = tic;
 for ii = 1:maxii
+    % Timing test
+    if ii == 5; fprintf('Timing test: %.4g s.\n', toc(timestart)); end
     if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
     % Parameters in params2fit_list are already transformed
     inputParams(I_params) = params2fit_list(ii,:);
