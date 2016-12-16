@@ -27,5 +27,5 @@ cat<<EOF | matlab -nodisplay
 addpath(genpath('/home/${USER}/MATLAB'));
 addpath(genpath('/home/${USER}/${PROJECT}'));
 cd('${WORKDIR}');
-changeprob_runfit(${IID});
+changeprob_runfit(${IID},${FIXNOISE},${GRIDSIZE});
 EOF

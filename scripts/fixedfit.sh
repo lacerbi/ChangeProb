@@ -10,9 +10,9 @@ RUN=${1}
 WORKDIR="/scratch/${USER}/${PROJECT}/run${RUN}"
 mkdir ${WORKDIR}
 cd ${WORKDIR}
-MAXID=290
-RUNTIME=48:00:00
-FIXNOISE="[]"
+MAXID=176
+RUNTIME=6:00:00
+FIXNOISE="1"
 GRIDSIZE="[]"
 
 #Job list is second argument
@@ -20,11 +20,11 @@ if [[ ! -z "$2" ]]; then
         JOBLIST=$2
 else
 	#Get all files in directory
-	JOBLIST="1-${MAXID}"
+	JOBLIST="12-22,34-44,56-66,78-88,100-110,122-132,144-154,166-176"
 fi
 
 #RESOURCES="nodes=1:ppn=1,mem=6GB,walltime=${RUNTIME}"
-RESOURCES="nodes=1:ppn=1,mem=3GB,walltime=${RUNTIME}"
+RESOURCES="nodes=1:ppn=1,mem=2GB,walltime=${RUNTIME}"
 
 #Convert from spaces to commas
 JOBLIST=${JOBLIST// /,}

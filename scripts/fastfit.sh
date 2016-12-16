@@ -13,7 +13,7 @@ cd ${WORKDIR}
 MAXID=290
 RUNTIME=48:00:00
 FIXNOISE="[]"
-GRIDSIZE="[]"
+GRIDSIZE="50"
 
 #Job list is second argument
 if [[ ! -z "$2" ]]; then
