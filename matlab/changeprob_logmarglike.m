@@ -163,6 +163,8 @@ if NumParams > 0
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % w
             case 7
                 params2fit(iParam,:) = round(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % Tmax (discrete)
+            case 8
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % Range for minimum probability (pVec(1))
         end
     end
 

@@ -118,9 +118,9 @@ switch(runModel)
     case 'subBayesian_pVec'
         runModel = 'idealBayesian';
         if task == 1 || task == 3
-            parameters = [0 1 0 0 0 1 0 1];
+            parameters = [0 1 0 0 0 0 0 1];
         else
-            parameters = [1 0 0 0 0 1 0 1];
+            parameters = [1 0 0 0 0 0 0 1];
         end
 end
 
