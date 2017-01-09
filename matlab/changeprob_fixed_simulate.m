@@ -1,4 +1,4 @@
-function dataSim = changeprob_fixed_simulate(data, task, parameters)
+function dataSim = changeprob_fixed_simulate(data, task, model, parameters)
 %CHANGEPROB_FIXED_SIMULATE Simulates a fixed criterion observer.
 % (Documentation to be written.)
 %
@@ -16,8 +16,10 @@ if nargin < 2; task = 1; parameters = []; end
 if isempty(task); task = 1; end
 if task ~= 1 && task ~= 2 && task ~=3; error('TASK can only be 1 (overt-criterion), 2 (covert-criterion), or 3 (mixed design).'); end
 
+if nargin < 3; model = {'fixed'}; parameters = []; end
+
 % Parameter vector: SIGMA_ELLIPSE or SIGMA_CRITERION
-if nargin < 3 || isempty(parameters); parameters = 5; end
+if nargin < 4 || isempty(parameters); parameters = 5; end
 
 % Get session parameters
 if isempty(data) 

@@ -1,4 +1,4 @@
-function dataSim = changeprob_exp_simulate(data, task, parameters)
+function dataSim = changeprob_exp_simulate(data, task, model, parameters)
 %CHANGEPROB_EXP_SIMULATE Simulates an exponentially weight-moving average observer.
 % (Documentation to be written.)
 %
@@ -16,9 +16,11 @@ if nargin < 2; task = 1; parameters = []; end
 if isempty(task); task = 1; end
 if task ~= 1 && task ~= 2 && task ~=3; error('TASK can only be 1 (overt-criterion), 2 (covert-criterion), or 3 (mixed design).'); end
 
+if nargin < 3; model = {'exponential'}; parameters = []; end
+
 % Parameter vector: #1 is SIGMA_ELLIPSE / SIGMA_CRITERION, #2 is ALPHA, #3
 % is W (optional)
-if nargin < 3 || isempty(parameters); parameters = [5 .1 1]; end
+if nargin < 4 || isempty(parameters); parameters = [5 .1 1]; end
 
 % Get session parameters
 if isempty(data) 
