@@ -1,4 +1,4 @@
-function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = changeprob_getSessionParameters(data, task, parameters)
+function [NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp, score] = changeprob_getSessionParameters(data, task, parameters)
 %CHANGEPROB_GETSESSIONPARAMETERS Gets session parameters from an existing
 %data struct or creates a fake dataset
 
@@ -12,10 +12,9 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
         
 %   OUTPUT:
         % NumTrials: total number of trials
-        % sigma_ellipse: sensory noise from calibration data
+        % sigma_ellipseData: sensory noise from calibration data
         % mu: vector containing the category means [muA, muB]
-        % sigma: std dev of the internal distributions - sqrt(sigma_s^2 +
-        % sigma_v^2)
+        % sigma_s: std dev of the category distributions
         % C: vector of category values (0 - A, 1 - B)
         % S: vector of true stimulus orientations
         % p_true: vector containing the probability of A
@@ -24,7 +23,7 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
         % score: 0 - wrong, 1 - correct
         
 %   Author: Elyse Norton
-%   Date: 12/12/16
+%   Date: 1/11/17
 %   email: elyse.norton@gmail.com
         
 
@@ -57,8 +56,12 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
             
             % Noise parameters
             sigma_s = data.StdDev;
-            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = data.EllipseNoise; end
-            sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse)
+                sigma_ellipseData = data.EllipseNoise;
+                sigma = sqrt(sigma_s^2 + sigma_ellipseData^2);
+            else
+                sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+            end
 
             % Category information 
             % (in the data Category B is coded as 1, Category A is coded as 2)
@@ -91,8 +94,12 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
 
             % Noise parameters
             sigma_s = data.StdDev;
-            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = data.EllipseNoise; end
-            sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+            if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse)
+                sigma_ellipseData = data.EllipseNoise; 
+                sigma = sqrt(sigma_s^2 + sigma_ellipseData^2);
+            else
+                sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+            end
 
             % Category information 
             % (in the data Category B/Red is coded as 1, Category A/Green is coded as 2)
@@ -124,9 +131,12 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
         prior_rl = [80,120];
         p_vec = linspace(0.2,0.8,5);
         Nprobs = numel(p_vec);
-        if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse); sigma_ellipse = 5; end
-        if isempty(sigma_criterion) || ~isfinite(sigma_criterion); sigma_criterion = sigma_ellipse; end
-        sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+        if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse)
+            sigma_ellipseData = 5;
+            sigma = sqrt(sigma_s^2 + sigma_ellipseData^2);
+        else
+            sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
+        end
         C = []; p_true = []; p = 0;
         while numel(C) < NumTrials
             runlength = randi(prior_rl);
@@ -140,7 +150,11 @@ function [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp, score] = chan
 
         % Generate stimuli based on category labels
         S = bsxfun(@plus, mu(C)', sigma_s*randn(NumTrials,1));
-        X = bsxfun(@plus, S, sigma_ellipse*randn(NumTrials,1));
+        if isempty(sigma_ellipse) || ~isfinite(sigma_ellipse)
+            X = bsxfun(@plus, S, sigma_ellipseData*randn(NumTrials,1));
+        else
+            X = bsxfun(@plus, S, sigma_ellipse*randn(NumTrials,1));
+        end
 
         % Responses based on fixed criterion (fixed at the neutral criterion)
         z_resp = bsxfun(@plus, mean(mu), sigma_criterion*randn(NumTrials,1));
