@@ -22,7 +22,7 @@ end
 % Data struct or random seed for fake data generation
 if nargin < 2; error('You must specify the session parameters.'); end
 
-% Task (1 overt, 2 covert)
+% Task (1 overt, 2 covert, 3 mixed)
 if nargin < 10 || isempty(task); task = 1; end
 if task ~= 1 && task ~= 2 && task ~=3; error('TASK can only be 1 (overt-criterion), 2 (covert-criterion), or 3 (mixed).'); end
 
