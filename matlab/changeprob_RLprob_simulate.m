@@ -4,7 +4,7 @@ function dataSim = changeprob_RLprob_simulate(data, task, model, parameters)
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Dec/30/2016
+% Date:     Jan/11/2017
 
 % Check input arguments
 
@@ -24,9 +24,9 @@ if nargin < 4 || isempty(parameters); parameters = [5 .1 1]; end
 
 % Get session parameters
 if isempty(data) 
-    [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters([], task, [parameters(1), parameters(1)]); % Generate fake data using specified parameters
+    [NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp_obs] = changeprob_getSessionParameters([], task, [parameters(1), parameters(1)]); % Generate fake data using specified parameters
 else
-    [NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs] = changeprob_getSessionParameters(data, task); % Determine session parameters from provided data set
+    [NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp_obs] = changeprob_getSessionParameters(data, task); % Determine session parameters from provided data set
 end
 
 switch numel(parameters)
@@ -35,6 +35,7 @@ switch numel(parameters)
     case 2
         if task ~= 2
             sigma_criterion = parameters(1);
+            sigma_ellipse = sigma_ellipseData;
         else
             sigma_ellipse = parameters(1);
         end
@@ -43,6 +44,7 @@ switch numel(parameters)
     case 3
         if task ~= 2
             sigma_criterion = parameters(1);
+            sigma_ellipse = sigma_ellipseData;
         else
             sigma_ellipse = parameters(1);
         end
@@ -50,7 +52,9 @@ switch numel(parameters)
         w = parameters(3);
     otherwise
         error('Too many input parameters');
-end     
+end
+
+sigma = sqrt(sigma_s^2 + sigma_ellipse^2);
 
 %% Start loop over trials
 
@@ -112,6 +116,7 @@ end
 
 dataSim.NumTrials = NumTrials;
 dataSim.mu = mu;
+dataSim.sigma_s = sigma_s;
 dataSim.sigma = sigma;
 dataSim.sigmaEllipse = sigma_ellipse;
 dataSim.Category = C;
