@@ -139,9 +139,9 @@ if fixNoise; noiseString = 'FIXED'; else noiseString = 'FREE'; end
 fprintf('Fitting model %s, %s-criterion task; sensory noise is %s, %d free parameters.\n', potentialModels{model}, taskName, noiseString, NumParams);
 
 %% Get session parameters
-[NumTrials, sigma_ellipse, mu, sigma, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
+[NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
 if and(task == 1, model == 5) || and(task == 3, model == 5)
-    X = bsxfun(@plus, S, sigma_ellipse*randn(numel(S), NumSamples));
+    X = bsxfun(@plus, S, sigma_ellipseData*randn(numel(S), NumSamples));
 else
     X = [];
 end
@@ -186,13 +186,14 @@ alpha_def = 0.2;        % Default alpha
 w_def     = 1;          % Default w (i.e., no bias)
 Tmax_def  = 0;          % None provided, use default prior window
 pVec_def = 0;           % None provided, use default probability vector
-notFit_def = [sigma_ellipse, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def];
+notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams
 
 %% Separate case if there are no free parameters
 if NumParams == 0
+    sigma = sqrt(sigma_s^2 + inputParams(1)^2);
     [nLL,rmse,resp_model,p_estimate,post] = ...
         changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
     lmL = -nLL;     % Log marginal likelihood is simply log likelihood
@@ -220,6 +221,7 @@ for ii = 1:maxii
     if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
     % Parameters in params2fit_list are already transformed
     inputParams(I_params) = params2fit_list(ii,:);
+    sigma = sqrt(sigma_s^2 + inputParams(1)^2);
     nLL_mat(ii) = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
 end
 fprintf('\n');
@@ -255,6 +257,7 @@ fitParams(exp_idx) = exp(fitParams(exp_idx));
 
 % Recompute additional outputs from best fit params
 inputParams(I_params) = fitParams;
+sigma = sqrt(sigma_s^2 + inputParams(1)^2);
 [nLL,rmse,resp_model,p_estimate,post] = ...
     changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
 
