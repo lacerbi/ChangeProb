@@ -1,4 +1,4 @@
-function dataSim = changeprob_simulateData(subID, models, task, numSims)
+function dataSim = changeprob_simulateData(subID, models, task, simNum)
 %CHANGEPROB_SIMULATEDATA Simulates an observer with the same experimental
 %parameters of the specified subject(s) using the specified model(s) in the
 %specified task(s) numSims times.
@@ -7,24 +7,35 @@ function dataSim = changeprob_simulateData(subID, models, task, numSims)
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Jan/9/2017
+% Date:     Jan/18/2017
 
-if nargin < 1; subID = []; models = []; task = []; numSims = []; end
+if nargin < 1; subID = []; models = []; task = []; simNum = []; end
 
-if isempty(subID)
-    subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'}; % Default all subjects for tasks 1 and 2
-    subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % Default all subjects for task 3
-end
+models_def = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
+    'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
+    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'}; % Default models
+
+subID_def = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'}; % Default subjects in the covert and overt tasks
+subID_mixed_def = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % Default subjects in the mixed design task
 
 if nargin < 2 || isempty(models)
-    models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
-    'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'}; % Default simulate all models
+    models = models_def; % Default simulate all models
 end
 
 if nargin < 3 || isempty(task); task = [1 2 3]; end % Default simulate all tasks
 
-if nargin < 4 || isempty(numSims); numSims = 1; end % Default number of simulations is 1/person/task & model
+if sum(task == 3) == 1 && ~isempty(subID)
+    subID_mixed = subID;
+end
+
+if isempty(subID)
+    subID = subID_def; % Default all subjects for tasks 1 and 2
+    subID_mixed = subID_mixed_def; % Default all subjects for task 3
+end
+
+if nargin < 4 || isempty(simNum); simNum = 1; end % Default number of simulations is 1/person/task & model
+
+numSims = numel(simNum);
 
 paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5]; % Default parameter bounds
 gridSize = 100; % Default grid size
@@ -43,31 +54,32 @@ for i = 1:numel(task)
     end
     if task(i) ~= 3
         for j = 1:numel(models)
-            if j < 3
+            idx_model = find(strcmp(models_def, models{j}) == 1);
+            if idx_model < 3
                 if i == 1
                     parameters = [0 1 0 0 0 0 0 0];
                 else
                     parameters = [1 0 0 0 0 0 0 0];
                 end
-            elseif j == 3 || j == 4 || j == 7
+            elseif idx_model == 3 || idx_model == 4 || idx_model == 7
                 if i == 1
                     parameters = [0 1 0 0 1 0 0 0];
                 else
                     parameters = [1 0 0 0 1 0 0 0];
                 end
-            elseif j == 8
+            elseif idx_model == 8
                 if i == 1
                     parameters = [0 1 0 0 0 0 1 0];
                 else
                     parameters = [1 0 0 0 0 0 1 0];
                 end
-            elseif j == 9
+            elseif idx_model == 9
                 if i == 1
                     parameters = [0 1 0 0 0 1 0 0];
                 else
                     parameters = [1 0 0 0 0 1 0 0];
                 end
-            elseif j == 10
+            elseif idx_model == 10
                 if i == 1
                     parameters = [0 1 0 0 0 0 0 1];
                 else
@@ -102,6 +114,7 @@ for i = 1:numel(task)
                 end
             end
             for ii = 1:numel(subID)
+                idx_subject = find(strcmp(subID_def, subID{ii}) == 1);
                 % Load data
                 cd('/Users/elysenorton/Desktop/ChangeProb/data');
                 load(strcat('ChangingProbabilities_', subID{ii}));
@@ -116,44 +129,48 @@ for i = 1:numel(task)
                 % Compute the cumulative sum of sorted vector
                 cumPost = cumsum(postSorted);
                 for jj = 1:numSims
-                    dataSim.randomSeed(jj,:) = i*j*ii*jj;
-                    rng(dataSim.randomSeed(jj,:));
+                    randomSeed = task(i)*idx_model*idx_subject*simNum(jj);
+                    rng(randomSeed);
                     % Sample from posterior
                     I_cumsum = find(rand(1,1) < cumPost);
                     I_cumsum = I_cumsum(1); % Choose first element
                     [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(size(modelPost), I_post(I_cumsum));
                     for iParam = 1:NumParams
-                        simParams(jj, iParam) = params2fit(iParam, idx(iParam)); 
+                        simParams(iParam) = params2fit(iParam, idx(iParam)); 
                     end
                     if strcmp(models{j}, 'fixed')
-                        dataSim = changeprob_fixed_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_fixed_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'idealBayesian') || strcmp(models{j}, 'subBayesian_rlprior') || strcmp(models{j}, 'subBayesian_conservative') || strcmp(models{j}, 'subBayesian_pVec')
-                        dataSim = changeprob_bocpd_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_bocpd_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'exponential') || strcmp(models{j}, 'exponential_conservative')
-                        dataSim = changeprob_exp_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_exp_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'RL_probability') || strcmp(models{j}, 'RL_probability_conservative')
-                        dataSim = changeprob_RLprob_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_RLprob_simulate(data, task(i), models{j}, simParams);
                     else
-                        dataSim = changeprob_RLcriterion_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_RLcriterion_simulate(data, task(i), models{j}, simParams);
                     end
                     dataSim.SimParameters = simParams;
+                    dataSim.randomSeed = randomSeed;
+                    dataSim.SubjectID = char(subID_def{idx_subject});
                     cd('/Users/elysenorton/Desktop/ChangeProb/matlab/ModelSimulations');
-                    save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', subID{ii}, '_', num2str(jj))), 'dataSim');
+                    save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', ...
+                        subID_def{idx_subject}, '_', num2str(simNum(jj)))), 'dataSim');
                     cd(currentFolder);
                 end
             end
         end
     else
         for j = 1:numel(models)
-            if j < 3
+            idx_model = find(strcmp(models_def, models{j}) == 1);
+            if idx_model < 3
                 parameters = [0 1 0 0 0 0 0 0];
-            elseif j == 3 || j == 4 || j == 7
+            elseif idx_model == 3 || idx_model == 4 || idx_model == 7
                 parameters = [0 1 0 0 1 0 0 0];
-            elseif j == 8
+            elseif idx_model == 8
                 parameters = [0 1 0 0 0 0 1 0];
-            elseif j == 9
+            elseif idx_model == 9
                 parameters = [0 1 0 0 0 1 0 0];
-            elseif j == 10
+            elseif idx_model == 10
                 parameters = [0 1 0 0 0 0 0 1];
             else
                 parameters = [0 1 0 0 1 1 0 0];
@@ -180,6 +197,7 @@ for i = 1:numel(task)
                 end
             end
             for ii = 1:numel(subID_mixed)
+                idx_subject = find(strcmp(subID_mixed_def, subID_mixed{ii}) == 1);
                 % Load data
                 cd('/Users/elysenorton/Desktop/ChangeProb/data');
                 load(strcat('ChangingProbabilitiesMixed_', subID_mixed{ii}));
@@ -194,29 +212,31 @@ for i = 1:numel(task)
                 % Compute the cumulative sum of sorted vector
                 cumPost = cumsum(postSorted);
                 for jj = 1:numSims
-                    dataSim.randomSeed(jj,:) = i*j*ii*jj;
-                    rng(dataSim.randomSeed(jj,:));
+                    randomSeed = task(i)*idx_model*idx_subject*simNum(jj);
+                    rng(randomSeed);
                     % Sample from posterior
                     I_cumsum = find(rand(1,1) < cumPost);
                     I_cumsum = I_cumsum(1); % Choose first element
                     [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(size(modelPost), I_post(I_cumsum));
                     for iParam = 1:NumParams
-                        simParams(jj, iParam) = params2fit(iParam, idx(iParam)); 
+                        simParams(iParam) = params2fit(iParam, idx(iParam)); 
                     end
                     if strcmp(models{j}, 'fixed')
-                        dataSim = changeprob_fixed_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_fixed_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'idealBayesian') || strcmp(models{j}, 'subBayesian_rlprior') || strcmp(models{j}, 'subBayesian_conservative') || strcmp(models{j}, 'subBayesian_pVec')
-                        dataSim = changeprob_bocpd_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_bocpd_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'exponential') || strcmp(models{j}, 'exponential_conservative')
-                        dataSim = changeprob_exp_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_exp_simulate(data, task(i), models{j}, simParams);
                     elseif strcmp(models{j}, 'RL_probability') || strcmp(models{j}, 'RL_probability_conservative')
-                        dataSim = changeprob_RLprob_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_RLprob_simulate(data, task(i), models{j}, simParams);
                     else
-                        dataSim = changeprob_RLcriterion_simulate(data, task(i), models{j}, simParams(jj,:));
+                        dataSim = changeprob_RLcriterion_simulate(data, task(i), models{j}, simParams);
                     end
                     dataSim.SimParameters = simParams;
+                    dataSim.randomSeed = randomSeed;
+                    dataSim.SubjectID = char(subID_mixed_def{idx_subject});
                     cd('/Users/elysenorton/Desktop/ChangeProb/matlab/ModelSimulations');
-                    save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', subID_mixed{ii}, '_', num2str(jj))), 'dataSim');
+                    save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', subID_mixed_def{idx_subject}, '_', num2str(simNum(jj)))), 'dataSim');
                     cd(currentFolder);
                 end
             end
