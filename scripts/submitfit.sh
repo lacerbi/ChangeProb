@@ -7,7 +7,7 @@ JOBSCRIPT="${BASEDIR}/scripts/fitdata.sh"
 
 #Job parameters
 RUN=${1}
-WORKDIR="/scratch/${USER}/${PROJECT}/run${RUN}"
+WORKDIR="${SCRATCH}/${PROJECT}/run${RUN}"
 mkdir ${WORKDIR}
 cd ${WORKDIR}
 MAXID=290
@@ -23,12 +23,20 @@ else
 	JOBLIST="1-${MAXID}"
 fi
 
-#RESOURCES="nodes=1:ppn=1,mem=6GB,walltime=${RUNTIME}"
-RESOURCES="nodes=1:ppn=1,mem=3GB,walltime=${RUNTIME}"
+NODES="1"
+PPN="1"
+MEM="3GB"
+RESOURCES="nodes=${NODES}:ppn=${PPN},mem=${MEM},walltime=${RUNTIME}"
 
 #Convert from spaces to commas
 JOBLIST=${JOBLIST// /,}
 echo JOBS $JOBLIST
 
 JOBNAME=${SHORTNAME}${RUN}
-qsub -t ${JOBLIST} -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} -l ${RESOURCES} -M ${USER}@nyu.edu -N ${JOBNAME} ${JOBSCRIPT}
+
+if [ ${CLUSTER} = "Prince" ]; then
+        # running on Prince
+        sbatch --verbose --array=${JOBLIST} --mail-type=FAIL --mail-user=${USER}@nyu.edu --mem=${MEM} --time=${RUNTIME} --nodes=${NODES} --ntasks-per-node=${PPN} --export=PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} --job-name=${JOBNAME} ${JOBSCRIPT}
+else
+	qsub -t ${JOBLIST} -q normal -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} -l ${RESOURCES} -M ${USER}@nyu.edu -N ${JOBNAME} ${JOBSCRIPT}
+fi
