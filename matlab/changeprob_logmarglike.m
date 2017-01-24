@@ -1,5 +1,5 @@
 function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds, fixNoise)
+    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds, fixNoise, simulatedData)
 
 %% CHANGEPROB_LOGMARGLIKE Log marginal likelihood for specified model
 
@@ -45,7 +45,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     12/15/2016
+% Date:     1/23/2016
     
 if nargin < 2; data = []; end
 if nargin < 3; task = []; end
@@ -53,6 +53,7 @@ if nargin < 4; parameters = []; end
 if nargin < 5; gridSize = []; end
 if nargin < 6; paramBounds = []; end
 if nargin < 7; fixNoise = []; end
+if nargin < 8; simulatedData = []; end
 
 %tic
 % Model to be fit
@@ -139,7 +140,23 @@ if fixNoise; noiseString = 'FIXED'; else noiseString = 'FREE'; end
 fprintf('Fitting model %s, %s-criterion task; sensory noise is %s, %d free parameters.\n', potentialModels{model}, taskName, noiseString, NumParams);
 
 %% Get session parameters
-[NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
+if isempty(simulatedData)
+    [NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp_obs, score] = changeprob_getSessionParameters(data, task);
+else
+    NumTrials = data.NumTrials;
+    sigma_ellipseData = data.sigmaEllipse;
+    mu = data.mu;
+    sigma_s = data.sigma_s;
+    C = data.Category;
+    S = data.Stimulus;
+    p_true = data.pA;
+    resp_obs = data.response;
+    score = data.score;
+    if size(resp_obs,1) == 1
+        resp_obs = resp_obs';
+        score = score';
+    end
+end
 if and(task == 1, model == 5) || and(task == 3, model == 5)
     X = bsxfun(@plus, S, sigma_ellipseData*randn(numel(S), NumSamples));
 else

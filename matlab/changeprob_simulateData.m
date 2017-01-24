@@ -152,10 +152,11 @@ for i = 1:numel(task)
                     dataSim.SimParameters = simParams;
                     dataSim.randomSeed = randomSeed;
                     dataSim.SubjectID = char(subID_def{idx_subject});
-                    cd('/Users/elysenorton/Desktop/ChangeProb/matlab/ModelSimulations');
+                    cd('/Users/elysenorton/Desktop/ModelSimulations/Simulations_PostSampling');
                     save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', ...
                         subID_def{idx_subject}, '_', num2str(simNum(jj)))), 'dataSim');
                     cd(currentFolder);
+                    clear simParams
                 end
             end
         end
@@ -235,9 +236,10 @@ for i = 1:numel(task)
                     dataSim.SimParameters = simParams;
                     dataSim.randomSeed = randomSeed;
                     dataSim.SubjectID = char(subID_mixed_def{idx_subject});
-                    cd('/Users/elysenorton/Desktop/ChangeProb/matlab/ModelSimulations');
+                    cd('/Users/elysenorton/Desktop/ModelSimulations/Simulations_PostSampling');
                     save(char(strcat('ChangeProb_Sim_', models{j}, '_', currentTask, '_', subID_mixed_def{idx_subject}, '_', num2str(simNum(jj)))), 'dataSim');
                     cd(currentFolder);
+                    clear simParams
                 end
             end
         end

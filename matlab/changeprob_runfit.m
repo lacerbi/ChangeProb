@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     12/15/2016
+% Date:     1/23/2016
 
 % Submit RL models
 % ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
@@ -18,16 +18,19 @@ subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'S
 subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
     'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'};
+    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'}; % Models to fit
+simModels = models; % Model used to simulate data
 
 Nsubjs = numel(subID);
 Nsubjs_mixed = numel(subID_mixed);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
+Nsims = 30;     % Number of simulations run for each model
 
-% Job number ranges from 1 to 290 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models)
-maxID = Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels;
-maxID_mixed = Nsubjs_mixed*Nmodels;
+% Job number ranges from 1 to 87,290 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 290 + 11 x 2 x 10 x 10 x 30 + 7 x 10 x 10 x 30 = 87,290)
+NdataJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels);
+NsimJobs = Nsubjs*Ntasks*Nmodels*Nmodels*Nsims + Nsubjs_mixed*Nmodels*Nmodels*Nsims;
+maxID = NdataJobs + NsimJobs;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
 end
@@ -38,10 +41,41 @@ rng(jobNumber);     % Fix random seed
 if jobNumber <= Nsubjs*Ntasks*Nmodels 
     subIndex = rem(jobNumber-1,Nsubjs)+1;
     runSubject = subID{subIndex};
-else
+    simulatedData = [];
+elseif jobNumber > Nsubjs*Ntasks*Nmodels && jobNumber <= NdataJobs
     jobNumber_mixed = jobNumber - Nsubjs*Ntasks*Nmodels;
     subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
     runSubject = subID_mixed{subIndex};
+    simulatedData = [];
+elseif jobNumber > NdataJobs
+    simulatedData = 1;
+    jobNumber_sim = jobNumber - NdataJobs;
+    if jobNumber_sim <= Nsubjs*Ntasks*Nmodels*Nmodels*Nsims % Number between 1 and 66,000
+        % Which model was used to simulate the data?
+        simModelIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*Nmodels*Nsims));
+        runSimModel = simModels{simModelIndex};
+        % What is the simulation number? Ranges from 1 to 30
+        simNumIndex = ceil((rem(jobNumber_sim-1,Nsubjs*Ntasks*Nmodels*Nsims)+1)/(Nsubjs*Ntasks*Nmodels));
+        runSimNum = num2str(simNumIndex);
+        % Update job number to be between 1 and 220
+        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*Nmodels)+1;
+        % Which subject?
+        subIndex = rem(jobNumber-1,Nsubjs)+1;
+        runSubject = subID{subIndex};
+    else
+        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*Nmodels*Nmodels*Nsims; % Number between 1 and 21,000
+        % Which model was used to sumulate the data?
+        simModelIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*Nmodels*Nsims));
+        runSimModel = simModels{simModelIndex};
+        % What is the simulation number? Ranges from 1 to 30
+        simNumIndex = ceil((rem(jobNumber_mixed_sim-1,Nsubjs_mixed*Nmodels*Nsims)+1)/(Nsubjs_mixed*Nmodels));
+        runSimNum = num2str(simNumIndex);
+        % Update job number to be between 1 and 70
+        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*Nmodels)+1;
+        % Which subject?
+        subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
+        runSubject = subID_mixed{subIndex};
+    end
 end
 
 % Which task?
@@ -67,19 +101,33 @@ end
 runModel = models{modelIndex};
 
 % Save file name
-SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
+if isempty(simulatedData)
+    SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
+else
+    SaveFileName = strcat(runSubject, '_', runSimModel, '_', runModel, '_', taskName, '_', runSimNum);
+end
 
 % Fit data for subject, model, and task specified
 parameters = [];
 
 % Add project directory and subdirs to path
-matlabdir = fileparts(which('changeprob_mL'));
+%matlabdir = fileparts(which('changeprob_mL'));
+matlabdir = fileparts(which('changeprob_logmarglike'));
 basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
 addpath(genpath(basedir));
-if task == 3
-    load(['ChangingProbabilitiesMixed_', runSubject]);
+if isempty(simulatedData)
+    if task == 3
+        load(['ChangingProbabilitiesMixed_', runSubject]);
+    else
+        load(['ChangingProbabilities_', runSubject]); % Load data
+    end
 else
-    load(['ChangingProbabilities_', runSubject]); % Load data
+    load(['ChangeProb_Sim_', runSimModel, '_', taskName, '_', runSubject, '_', runSimNum]);
+    data = dataSim;
+    if isempty(gridSize)
+        gridSize = 50;
+    end
+    simParams = data.SimParameters;
 end
 
 switch(runModel)
@@ -125,14 +173,20 @@ switch(runModel)
 end
 
 [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters, gridSize, [], fixNoise);
+    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters, gridSize, [], fixNoise, simulatedData);
 
 fprintf('MAP parameters:\n');
 fitParams
 
-save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
-    'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
-    'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
+if isempty(simulatedData)
+    save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
+        'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
+        'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
+else
+    save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
+        'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
+        'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
+end
 
 end
 
