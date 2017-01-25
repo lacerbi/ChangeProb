@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     1/23/2016
+% Date:     1/25/2016
 
 % Submit RL models
 % ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
@@ -27,9 +27,11 @@ Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
 
-% Job number ranges from 1 to 87,290 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 290 + 11 x 2 x 10 x 10 x 30 + 7 x 10 x 10 x 30 = 87,290)
+% Job number ranges from 1 to 8990 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 290 + 8700)
+    % Note: for each jobNumber > 290 we will fit all models to a complete
+    % simulated data at once
 NdataJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels);
-NsimJobs = Nsubjs*Ntasks*Nmodels*Nmodels*Nsims + Nsubjs_mixed*Nmodels*Nmodels*Nsims;
+NsimJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels)*Nsims;
 maxID = NdataJobs + NsimJobs;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
@@ -50,12 +52,9 @@ elseif jobNumber > Nsubjs*Ntasks*Nmodels && jobNumber <= NdataJobs
 elseif jobNumber > NdataJobs
     simulatedData = 1;
     jobNumber_sim = jobNumber - NdataJobs;
-    if jobNumber_sim <= Nsubjs*Ntasks*Nmodels*Nmodels*Nsims % Number between 1 and 66,000
-        % Which model was used to simulate the data?
-        simModelIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*Nmodels*Nsims));
-        runSimModel = simModels{simModelIndex};
-        % What is the simulation number? Ranges from 1 to 30
-        simNumIndex = ceil((rem(jobNumber_sim-1,Nsubjs*Ntasks*Nmodels*Nsims)+1)/(Nsubjs*Ntasks*Nmodels));
+    if jobNumber_sim <= Nsubjs*Ntasks*Nmodels*Nsims % Number between 1 and 6600
+        % What is the sample number (1 to 30)?
+        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*Nmodels));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 220
         jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*Nmodels)+1;
@@ -63,12 +62,9 @@ elseif jobNumber > NdataJobs
         subIndex = rem(jobNumber-1,Nsubjs)+1;
         runSubject = subID{subIndex};
     else
-        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*Nmodels*Nmodels*Nsims; % Number between 1 and 21,000
-        % Which model was used to sumulate the data?
-        simModelIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*Nmodels*Nsims));
-        runSimModel = simModels{simModelIndex};
-        % What is the simulation number? Ranges from 1 to 30
-        simNumIndex = ceil((rem(jobNumber_mixed_sim-1,Nsubjs_mixed*Nmodels*Nsims)+1)/(Nsubjs_mixed*Nmodels));
+        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*Nmodels*Nsims; % Number between 1 and 2100
+        % What is the sample number (1 to 30)?
+        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*Nmodels));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 70
         jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*Nmodels)+1;
@@ -98,17 +94,13 @@ if jobNumber <= Nsubjs*Ntasks*Nmodels
 else
     modelIndex = ceil(jobNumber_mixed/Nsubjs_mixed);
 end
-runModel = models{modelIndex};
 
-% Save file name
+% Simulation or fitting model?
 if isempty(simulatedData)
-    SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
+    runModel = models{modelIndex};
 else
-    SaveFileName = strcat(runSubject, '_', runSimModel, '_', runModel, '_', taskName, '_', runSimNum);
+    runSimModel = models{modelIndex};
 end
-
-% Fit data for subject, model, and task specified
-parameters = [];
 
 % Add project directory and subdirs to path
 %matlabdir = fileparts(which('changeprob_mL'));
@@ -130,62 +122,77 @@ else
     simParams = data.SimParameters;
 end
 
-switch(runModel)
-    case 'exponential_conservative'
-        runModel = 'exponential';
-        if isempty(parameters)
-            if task == 1 || task == 3
-                parameters = [0 1 0 0 1 1 0 0];
-            else
-                parameters = [1 0 0 0 1 1 0 0];
-            end
-        end
-    case 'RL_probability_conservative'
-        runModel = 'RL_probability';
-        if isempty(parameters)
-            if task == 1 || task == 3
-                parameters = [0 1 0 0 1 1 0 0];
-            else
-                parameters = [1 0 0 0 1 1 0 0];
-            end
-        end
-    case 'subBayesian_rlprior'
-        runModel = 'idealBayesian';
-        if task == 1 || task == 3
-            parameters = [0 1 0 0 0 0 1 0];
-        else
-            parameters = [1 0 0 0 0 0 1 0];
-        end
-    case 'subBayesian_conservative'
-        runModel = 'idealBayesian';
-        if task == 1 || task == 3
-            parameters = [0 1 0 0 0 1 0 0];
-        else
-            parameters = [1 0 0 0 0 1 0 0];
-        end
-    case 'subBayesian_pVec'
-        runModel = 'idealBayesian';
-        if task == 1 || task == 3
-            parameters = [0 1 0 0 0 0 0 1];
-        else
-            parameters = [1 0 0 0 0 0 0 1];
-        end
+if isempty(simulatedData)
+    NumRunModel = 1;
+else
+    NumRunModel = Nmodels;
 end
 
-[logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters, gridSize, [], fixNoise, simulatedData);
+for ii = 1:NumRunModel
+    if isempty(simulatedData)
+        SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
+    else
+        runModel = models{ii};
+        SaveFileName = strcat(runSubject, '_', runSimModel, '_', runModel, '_', taskName, '_', runSimNum);
+    end
+    parameters = [];
+    switch(runModel)
+        case 'exponential_conservative'
+            runModel = 'exponential';
+            if isempty(parameters)
+                if task == 1 || task == 3
+                    parameters = [0 1 0 0 1 1 0 0];
+                else
+                    parameters = [1 0 0 0 1 1 0 0];
+                end
+            end
+        case 'RL_probability_conservative'
+            runModel = 'RL_probability';
+            if isempty(parameters)
+                if task == 1 || task == 3
+                    parameters = [0 1 0 0 1 1 0 0];
+                else
+                    parameters = [1 0 0 0 1 1 0 0];
+                end
+            end
+        case 'subBayesian_rlprior'
+            runModel = 'idealBayesian';
+            if task == 1 || task == 3
+                parameters = [0 1 0 0 0 0 1 0];
+            else
+                parameters = [1 0 0 0 0 0 1 0];
+            end
+        case 'subBayesian_conservative'
+            runModel = 'idealBayesian';
+            if task == 1 || task == 3
+                parameters = [0 1 0 0 0 1 0 0];
+            else
+                parameters = [1 0 0 0 0 1 0 0];
+            end
+        case 'subBayesian_pVec'
+            runModel = 'idealBayesian';
+            if task == 1 || task == 3
+                parameters = [0 1 0 0 0 0 0 1];
+            else
+                parameters = [1 0 0 0 0 0 0 1];
+            end
+    end
 
-fprintf('MAP parameters:\n');
-fitParams
+    [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
+        resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(runModel, data, task, parameters, gridSize, [], fixNoise, simulatedData);
 
-if isempty(simulatedData)
-    save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
-        'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
-        'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
-else
-    save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
-        'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
-        'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
+    fprintf('MAP parameters:\n');
+    fitParams
+
+    if isempty(simulatedData)
+        save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
+            'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
+            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
+    else
+        save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
+            'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
+            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
+    end
 end
 
 end
