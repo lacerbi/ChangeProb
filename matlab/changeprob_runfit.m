@@ -134,6 +134,16 @@ for ii = 1:NumRunModel
     else
         runModel = models{ii};
         SaveFileName = strcat(runSubject, '_', runSimModel, '_', runModel, '_', taskName, '_', runSimNum);
+        
+        try
+            temp = load(SaveFileName);
+            if ~isfield(temp,'simParams'); error('File does not contain simulated paramaters.'); end            
+            % Fit already exists, skip to next fit
+            continue;
+        catch
+            % Either file does not exist or is corrupted
+        end
+        
     end
     parameters = [];
     switch(runModel)
