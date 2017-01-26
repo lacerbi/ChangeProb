@@ -134,13 +134,16 @@ for ii = 1:NumRunModel
     else
         runModel = models{ii};
         SaveFileName = strcat(runSubject, '_', runSimModel, '_', runModel, '_', taskName, '_', runSimNum);
-        
+                
         try
             temp = load(SaveFileName);
             if ~isfield(temp,'simParams'); error('File does not contain simulated paramaters.'); end            
             % Fit already exists, skip to next fit
+            fprintf('\n\n%s\n%s: Fit %d/%d already on file. Skipping.\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, repmat('#',[1,80]));
             continue;
         catch
+            startTime = tic;
+            fprintf('\n\n%s\n%s: Starting fit %d/%d.\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, repmat('#',[1,80]));
             % Either file does not exist or is corrupted
         end
         
@@ -202,6 +205,8 @@ for ii = 1:NumRunModel
         save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
             'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
             'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
+        fprintf('\n\n%s\n%s: Finished fit %d/%d (running time = %.2f h).\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, toc(startTime)/3600, repmat('#',[1,80]));
+        
     end
 end
 
