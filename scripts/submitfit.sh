@@ -1,7 +1,7 @@
 #!/bin/bash
 PROJECT="ChangeProb"
 SHORTNAME="CP"
-BASEDIR="/home/${USER}/${PROJECT}"
+BASEDIR="${HOME}/${PROJECT}"
 SOURCEDIR="${BASEDIR}"
 JOBSCRIPT="${BASEDIR}/scripts/fitdata.sh"
 
@@ -11,7 +11,7 @@ WORKDIR="${SCRATCH}/${PROJECT}/run${RUN}"
 mkdir ${WORKDIR}
 cd ${WORKDIR}
 MAXID=290
-RUNTIME=48:00:00
+RUNTIME=24:00:00
 FIXNOISE="[]"
 GRIDSIZE="[]"
 
