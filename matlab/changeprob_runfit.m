@@ -14,7 +14,7 @@ subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'S
 subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
     'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec', 'subBayesian_betahyp'}; % Models to fit
+    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec', 'subBayesian_betahyp', 'subBayesian_3param'}; % Models to fit
 simModels = models; % Model used to simulate data
 
 Nsubjs = numel(subID);
@@ -23,11 +23,11 @@ Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
 
-% Job number ranges from 1 to 9019 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 319 + 8700)
-    % Note: for each jobNumber > 319 we will fit all models to a complete
+% Job number ranges from 1 to 9048 (11 subjects x 2 tasks x 12 models + 7 subjects x 12 models = 348 + 8700)
+    % Note: for each jobNumber > 348 we will fit all models to a complete
     % simulated data at once
 NdataJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels);
-NsimJobs = (Nsubjs*Ntasks*(Nmodels-1) + Nsubjs_mixed*(Nmodels-1))*Nsims;
+NsimJobs = (Nsubjs*Ntasks*(Nmodels-2) + Nsubjs_mixed*(Nmodels-2))*Nsims;
 maxID = NdataJobs + NsimJobs;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
@@ -48,22 +48,22 @@ elseif jobNumber > Nsubjs*Ntasks*Nmodels && jobNumber <= NdataJobs
 elseif jobNumber > NdataJobs
     simulatedData = 1;
     jobNumber_sim = jobNumber - NdataJobs;
-    if jobNumber_sim <= Nsubjs*Ntasks*(Nmodels-1)*Nsims % Number between 1 and 6600
+    if jobNumber_sim <= Nsubjs*Ntasks*(Nmodels-2)*Nsims % Number between 1 and 6600
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*(Nmodels-1)));
+        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*(Nmodels-2)));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 220
-        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*(Nmodels-1))+1;
+        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*(Nmodels-2))+1;
         % Which subject?
         subIndex = rem(jobNumber-1,Nsubjs)+1;
         runSubject = subID{subIndex};
     else
-        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*(Nmodels-1)*Nsims; % Number between 1 and 2100
+        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*(Nmodels-2)*Nsims; % Number between 1 and 2100
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*(Nmodels-1)));
+        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*(Nmodels-2)));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 70
-        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*(Nmodels-1))+1;
+        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*(Nmodels-2))+1;
         % Which subject?
         subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
         runSubject = subID_mixed{subIndex};
@@ -190,6 +190,13 @@ for ii = 1:NumRunModel
                 parameters = [0 1 0 0 0 0 0 0 1];
             else
                 parameters = [1 0 0 0 0 0 0 0 1];
+            end
+        case 'subBayesian_3param'
+            runModel = 'idealBayesian';
+            if task == 1 || task == 3
+                parameters = [0 1 0 0 0 0 1 0 1];
+            else
+                parameters = [1 0 0 0 0 0 1 0 1];
             end
     end
 
