@@ -198,6 +198,9 @@ for ii = 1:NumRunModel
             else
                 parameters = [1 0 0 0 0 0 1 0 1];
             end
+            if isempty(gridSize)
+                gridSize = 50;
+            end
     end
 
     [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...

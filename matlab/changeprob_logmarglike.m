@@ -136,7 +136,7 @@ if NumParams ~= size(paramBounds,1)
 end
 
 %% Print session
-if fixNoise || and(task ~= 2, parameters(1) == 0); noiseString = 'FIXED'; else noiseString = 'FREE'; end
+if ~isempty(fixNoise) || and(task ~= 2, parameters(1) == 0); noiseString = 'FIXED'; else noiseString = 'FREE'; end
 fprintf('Fitting model %s, %s-criterion task; sensory noise is %s, %d free parameters.\n', potentialModels{model}, taskName, noiseString, NumParams);
 
 %% Get session parameters
