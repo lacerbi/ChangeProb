@@ -5,11 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     1/25/2016
-
-% Submit RL models
-% ./submitfit.sh 2 5,19,33,47,61,75,89,103,117,131,145
-% ./submitfit.sh 3 6,20,34,48,62,76,90,104,118,132,146
+% Date:     3/14/2016
 
 if nargin < 2; fixNoise = []; end
 if nargin < 3; gridSize = []; end
@@ -18,7 +14,7 @@ subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'S
 subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
 models = {'fixed', 'idealBayesian', 'exponential', 'RL_probability', ...
     'exponential_conservative', 'RL_probability_conservative', 'RL_criterion', ...
-    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec'}; % Models to fit
+    'subBayesian_rlprior', 'subBayesian_conservative', 'subBayesian_pVec', 'subBayesian_betahyp'}; % Models to fit
 simModels = models; % Model used to simulate data
 
 Nsubjs = numel(subID);
@@ -27,11 +23,11 @@ Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
 
-% Job number ranges from 1 to 8990 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 290 + 8700)
-    % Note: for each jobNumber > 290 we will fit all models to a complete
+% Job number ranges from 1 to 9019 (11 subjects x 2 tasks x 10 models + 7 subjects x 10 models = 319 + 8700)
+    % Note: for each jobNumber > 319 we will fit all models to a complete
     % simulated data at once
 NdataJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels);
-NsimJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels)*Nsims;
+NsimJobs = (Nsubjs*Ntasks*(Nmodels-1) + Nsubjs_mixed*(Nmodels-1))*Nsims;
 maxID = NdataJobs + NsimJobs;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
@@ -52,22 +48,22 @@ elseif jobNumber > Nsubjs*Ntasks*Nmodels && jobNumber <= NdataJobs
 elseif jobNumber > NdataJobs
     simulatedData = 1;
     jobNumber_sim = jobNumber - NdataJobs;
-    if jobNumber_sim <= Nsubjs*Ntasks*Nmodels*Nsims % Number between 1 and 6600
+    if jobNumber_sim <= Nsubjs*Ntasks*(Nmodels-1)*Nsims % Number between 1 and 6600
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*Nmodels));
+        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*(Nmodels-1)));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 220
-        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*Nmodels)+1;
+        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*(Nmodels-1))+1;
         % Which subject?
         subIndex = rem(jobNumber-1,Nsubjs)+1;
         runSubject = subID{subIndex};
     else
-        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*Nmodels*Nsims; % Number between 1 and 2100
+        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*(Nmodels-1)*Nsims; % Number between 1 and 2100
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*Nmodels));
+        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*(Nmodels-1)));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 70
-        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*Nmodels)+1;
+        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*(Nmodels-1))+1;
         % Which subject?
         subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
         runSubject = subID_mixed{subIndex};
@@ -103,7 +99,6 @@ else
 end
 
 % Add project directory and subdirs to path
-%matlabdir = fileparts(which('changeprob_mL'));
 matlabdir = fileparts(which('changeprob_logmarglike'));
 basedir = matlabdir(1:find(matlabdir == filesep(), 1, 'last')-1);
 addpath(genpath(basedir));
@@ -154,40 +149,47 @@ for ii = 1:NumRunModel
             runModel = 'exponential';
             if isempty(parameters)
                 if task == 1 || task == 3
-                    parameters = [0 1 0 0 1 1 0 0];
+                    parameters = [0 1 0 0 1 1 0 0 0];
                 else
-                    parameters = [1 0 0 0 1 1 0 0];
+                    parameters = [1 0 0 0 1 1 0 0 0];
                 end
             end
         case 'RL_probability_conservative'
             runModel = 'RL_probability';
             if isempty(parameters)
                 if task == 1 || task == 3
-                    parameters = [0 1 0 0 1 1 0 0];
+                    parameters = [0 1 0 0 1 1 0 0 0];
                 else
-                    parameters = [1 0 0 0 1 1 0 0];
+                    parameters = [1 0 0 0 1 1 0 0 0];
                 end
             end
         case 'subBayesian_rlprior'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 1 0];
+                parameters = [0 1 0 0 0 0 1 0 0];
             else
-                parameters = [1 0 0 0 0 0 1 0];
+                parameters = [1 0 0 0 0 0 1 0 0];
             end
         case 'subBayesian_conservative'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 1 0 0];
+                parameters = [0 1 0 0 0 1 0 0 0];
             else
-                parameters = [1 0 0 0 0 1 0 0];
+                parameters = [1 0 0 0 0 1 0 0 0];
             end
         case 'subBayesian_pVec'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 0 1];
+                parameters = [0 1 0 0 0 0 0 1 0];
             else
-                parameters = [1 0 0 0 0 0 0 1];
+                parameters = [1 0 0 0 0 0 0 1 0];
+            end
+        case 'subBayesian_betahyp'
+            runModel = 'idealBayesian';
+            if task == 1 || task == 3
+                parameters = [0 1 0 0 0 0 0 0 1];
+            else
+                parameters = [1 0 0 0 0 0 0 0 1];
             end
     end
 
@@ -205,8 +207,7 @@ for ii = 1:NumRunModel
         save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
             'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', ...
             'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
-        fprintf('\n\n%s\n%s: Finished fit %d/%d (running time = %.2f h).\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, toc(startTime)/3600, repmat('#',[1,80]));
-        
+        fprintf('\n\n%s\n%s: Finished fit %d/%d (running time = %.2f h).\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, toc(startTime)/3600, repmat('#',[1,80]));       
     end
 end
 

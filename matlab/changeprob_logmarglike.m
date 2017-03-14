@@ -72,7 +72,7 @@ if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (co
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
-MaxParams = 8;
+MaxParams = 9;
 
 % Parameters to be fit
 if isempty(parameters)
@@ -111,7 +111,7 @@ else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta'};
 NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
@@ -127,7 +127,7 @@ fprintf('Grid for computation of the marginal likelihood has %d nodes.\n', prod(
 
 % Lower and upper parameter bounds
 if isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -182,6 +182,8 @@ if NumParams > 0
                 params2fit(iParam,:) = round(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % Tmax (discrete)
             case 8
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % Range for minimum probability (pVec(1))
+            case 9
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % beta (hyperprior)
         end
     end
 
@@ -201,9 +203,10 @@ lapse_def = 1e-4;       % Default lapse (i.e., tiny lapse)
 gamma_def = Inf;        % Default gamma (i.e., BDT)
 alpha_def = 0.2;        % Default alpha
 w_def     = 1;          % Default w (i.e., no bias)
-Tmax_def  = 0;          % None provided, use default prior window
-pVec_def = 0;           % None provided, use default probability vector
-notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def];
+Tmax_def  = 0;          % Use default prior window
+pVec_def = 0;           % Use default probability vector
+beta_def = 0;           % Use default hyperprior, [0,0]
+notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams

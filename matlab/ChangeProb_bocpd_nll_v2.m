@@ -67,15 +67,16 @@ end
 %% Observer model parameters
 
 % Default values
-sigma_criterion = sigma_ellipse;
 lambda = 0;
 gamma = Inf;
 w = 1;
 
 switch numel(parameters)
-    case 0  % Empty parameter vector        
+    case 0  % Empty parameter vector
+        sigma_criterion = sigma_ellipse;
     case 1
-        sigma_ellipse = parameters(1);        
+        sigma_ellipse = parameters(1);
+        sigma_criterion = sigma_ellipse;
     case 2
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);        

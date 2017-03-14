@@ -15,7 +15,12 @@ switch model
         else
             p_vec = linspace(inputParams(8), 1-inputParams(8), 5);
         end
-        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec);
+        if inputParams(9) == 0
+            beta_hyp = [];
+        else
+            beta_hyp = inputParams(9)^2;
+        end
+        [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec, beta_hyp);
     case 2
         [nLL, rmse, p_estimate, resp_model] = changeprob_fixed_nll(inputParams(1:6), NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
