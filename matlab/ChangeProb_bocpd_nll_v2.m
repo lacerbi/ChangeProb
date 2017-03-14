@@ -1,4 +1,4 @@
-function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec)
+function [nLL, rmse, p_estimate, resp_model, post] = ChangeProb_bocpd_nll_v2(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task, prior_rl, p_vec, beta_hyp)
 %CHANGEPROB_BOCPD_NLL Bayesian online changepoint detection observer.
 % (Documentation to be written.)
 %
@@ -34,6 +34,11 @@ if nargin < 12 || isempty(p_vec)
     p_vec = linspace(0.2,0.8,5); % Default states
 end
 
+if nargin < 13 || isempty(beta_hyp)
+    beta_hyp = [0,0];   % Default beta hyperprior after changepoint (maximum-likelihood)
+end
+if isscalar(beta_hyp); beta_hyp = beta_hyp*[1,1]; end
+
 %% Experiment constants
 
 % Run length ~ Uniform[prior_rl(1),prior_rl(2)]
@@ -61,42 +66,33 @@ end
 
 %% Observer model parameters
 
+% Default values
+sigma_criterion = sigma_ellipse;
+lambda = 0;
+gamma = Inf;
+w = 1;
+
 switch numel(parameters)
-    case 0  % Empty parameter vector
-        sigma_criterion = sigma_ellipse;
-        lambda = 0;
-        gamma = Inf;
-        w = 1;
+    case 0  % Empty parameter vector        
     case 1
-        sigma_ellipse = parameters(1);
-        sigma_criterion = sigma_ellipse;
-        lambda = 0;
-        gamma = Inf;
-        w = 1;
+        sigma_ellipse = parameters(1);        
     case 2
         sigma_ellipse = parameters(1);
-        sigma_criterion = parameters(2);
-        lambda = 0;
-        gamma = Inf;
-        w = 1;
+        sigma_criterion = parameters(2);        
     case 3
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
-        gamma = Inf;
-        w = 1;
     case 4
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
         gamma = parameters(4);
-        w = 1;
     case 5
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
         lambda = parameters(3);
         gamma = parameters(4);
-        w = 1;
     case 6
         sigma_ellipse = parameters(1);
         sigma_criterion = parameters(2);
@@ -104,7 +100,7 @@ switch numel(parameters)
         gamma = parameters(4);
         w = parameters(6);
     otherwise
-        error('PARAMETERS should be a vector with up to eight parameters.');
+        error('PARAMETERS should be a vector with up to six parameters.');
 end
 
 %% Initialize inference
@@ -144,7 +140,7 @@ PCx = [];
 for t = 1:NumTrials
     %t
     if task == 2 || and(task == 3, mod(t,5) ~= 0); Xt = X(t,:); else Xt = []; end    
-    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,mu,sigma,task,t);
+    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,beta_hyp,mu,sigma,task,t);
     tt = nansum(post,2);
 
     % The predictive posterior is about the next trial
@@ -230,7 +226,7 @@ rmse = sqrt(mean((meanP - p_true).^2));
 end
 
 %--------------------------------------------------------------------------
-function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,mu,sigma,task, trial)
+function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,beta_hyp,mu,sigma,task,trial)
 %BAYESIANCPDUPDATE Bayesian online changepoint detection update
 
     %if mod(t,100) == 0
@@ -309,7 +305,9 @@ function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,
     else
         Psi = bsxfun(@times, Psi, 1 - p_vec);
     end
-    Psi(1,1,:) = 1;
+    
+    % Hyperprior
+    Psi(1,1,:) = exp(beta_hyp(1).*log(p_vec) + beta_hyp(2).*log(1-p_vec));
     Psi = bsxfun(@rdivide, Psi, sum(Psi,3));
     
     % 6b. Store predictive posterior over pi_t
