@@ -48,6 +48,9 @@ switch model
         rmse = [];
         p_estimate = [];
         post = [];
+    case 6
+        [nLL, rmse, p_estimate, resp_model] = changeprob_gold_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        post = [];
     otherwise
         error('Cannot compute the negative log likelihood for the chosen model.');
 end

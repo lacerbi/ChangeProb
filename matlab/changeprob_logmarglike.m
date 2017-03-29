@@ -16,13 +16,14 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
         % 'exponential'
         % 'RL_probability'
         % 'RL_criterion'
+        % 'gold'
     % data: data struct from changing probability experiment
     % task: lets you choose which task to fit
         % 1 - overt-criterion task
         % 2 - covert-criterion task
         % 3 - mixed design (overt-criterion task on every 5th trial)
-    % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
-        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec]
+    % parameters: Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
+        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec, betahyp, delta1, delta2, hRate]
     % gridSize: size of parameter grid (e.g., n or [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
@@ -45,7 +46,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     1/23/2016
+% Date:     3/28/2017
     
 if nargin < 2; data = []; end
 if nargin < 3; task = []; end
@@ -59,7 +60,7 @@ if nargin < 8; simulatedData = []; end
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
 potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ...
-    'RL_criterion'};
+    'RL_criterion', 'gold'};
 model = find(strcmp(model, potentialModels)); % recode model to numeric value
 
 % Data struct or random seed for fake data generation
@@ -72,7 +73,7 @@ if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (co
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
-MaxParams = 9;
+MaxParams = 12;
 
 % Parameters to be fit
 if isempty(parameters)
@@ -81,20 +82,26 @@ if isempty(parameters)
         case 1
             if model < 3
                 parameters(2) = 1;
-            else
+            elseif and(model > 2, model ~=6)
                 parameters([2,5]) = 1;
+            else
+                parameters([2,10,11]) = 1;
             end
         case 2
             if model < 3
                 parameters(1) = 1;
-            else
+            elseif and(model > 2, model ~=6)
                 parameters([1,5]) = 1;
+            else
+                parameters([1,10,11]) = 1;
             end
         case 3
             if model < 3
                 parameters(2) = 1;
-            else
+            elseif and(model > 2, model ~=6)
                 parameters([2,5]) = 1;
+            else
+                parameters([2,10,11]) = 1;
             end
     end
 elseif sum(parameters) == 0
@@ -111,7 +118,7 @@ else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta', 'delta1', 'delta2', 'hRate'};
 NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
@@ -127,7 +134,7 @@ fprintf('Grid for computation of the marginal likelihood has %d nodes.\n', prod(
 
 % Lower and upper parameter bounds
 if isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10; 1,5; 1,5; 0,1];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -184,6 +191,10 @@ if NumParams > 0
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % Range for minimum probability (pVec(1))
             case 9
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % beta (hyperprior)
+            case {10, 11}
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % distance between nodes (log of the true deltas)
+            case 12
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % hazard rate
         end
     end
 
@@ -206,7 +217,9 @@ w_def     = 1;          % Default w (i.e., no bias)
 Tmax_def  = 0;          % Use default prior window
 pVec_def = 0;           % Use default probability vector
 beta_def = 0;           % Use default hyperprior, [0,0]
-notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def];
+delta_def = 2;          % Use default node distance
+hRate_def = .01;        % Use default hazard rate (average rate of change)
+notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def, delta_def, delta_def, hRate_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams
