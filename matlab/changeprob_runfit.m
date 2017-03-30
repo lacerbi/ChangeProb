@@ -149,54 +149,54 @@ for ii = 1:NumRunModel
             runModel = 'exponential';
             if isempty(parameters)
                 if task == 1 || task == 3
-                    parameters = [0 1 0 0 1 1 0 0 0];
+                    parameters = [0 1 0 0 1 1 0 0 0 0 0 0];
                 else
-                    parameters = [1 0 0 0 1 1 0 0 0];
+                    parameters = [1 0 0 0 1 1 0 0 0 0 0 0];
                 end
             end
         case 'RL_probability_conservative'
             runModel = 'RL_probability';
             if isempty(parameters)
                 if task == 1 || task == 3
-                    parameters = [0 1 0 0 1 1 0 0 0];
+                    parameters = [0 1 0 0 1 1 0 0 0 0 0 0];
                 else
-                    parameters = [1 0 0 0 1 1 0 0 0];
+                    parameters = [1 0 0 0 1 1 0 0 0 0 0 0];
                 end
             end
         case 'subBayesian_rlprior'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 1 0 0];
+                parameters = [0 1 0 0 0 0 1 0 0 0 0 0];
             else
-                parameters = [1 0 0 0 0 0 1 0 0];
+                parameters = [1 0 0 0 0 0 1 0 0 0 0 0];
             end
         case 'subBayesian_conservative'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 1 0 0 0];
+                parameters = [0 1 0 0 0 1 0 0 0 0 0 0];
             else
-                parameters = [1 0 0 0 0 1 0 0 0];
+                parameters = [1 0 0 0 0 1 0 0 0 0 0 0];
             end
         case 'subBayesian_pVec'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 0 1 0];
+                parameters = [0 1 0 0 0 0 0 1 0 0 0 0];
             else
-                parameters = [1 0 0 0 0 0 0 1 0];
+                parameters = [1 0 0 0 0 0 0 1 0 0 0 0];
             end
         case 'subBayesian_betahyp'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 0 0 1];
+                parameters = [0 1 0 0 0 0 0 0 1 0 0 0];
             else
-                parameters = [1 0 0 0 0 0 0 0 1];
+                parameters = [1 0 0 0 0 0 0 0 1 0 0 0];
             end
         case 'subBayesian_3param'
             runModel = 'idealBayesian';
             if task == 1 || task == 3
-                parameters = [0 1 0 0 0 0 1 0 1];
+                parameters = [0 1 0 0 0 0 1 0 1 0 0 0];
             else
-                parameters = [1 0 0 0 0 0 1 0 1];
+                parameters = [1 0 0 0 0 0 1 0 1 0 0 0];
             end
             if isempty(gridSize)
                 gridSize = 50;

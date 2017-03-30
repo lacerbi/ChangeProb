@@ -42,7 +42,7 @@ delta2 = exp(parameters(11));
 nodes = [1, 1+delta1, delta1+delta2+1];
 hRate = parameters(12);
 nu_p = 2;
-numNodes = 3;
+numNodes = numel(nodes);
 
 %% Start loop over trials
 
@@ -118,7 +118,7 @@ for t = 2:NumTrials
     beta(t) = p_estimate(t,:)/(1-p_estimate(t,:));
     z_model(:,t) = sigma^2 * log(beta(t)) / diff(mu);
     % Compute the log likelihood
-    if task == 1
+    if task == 1 || and(task == 3, mod(t,5)==0)
         log_P(:,t) = -0.5*log(2*pi*sigma_criterion) - 0.5*((resp_obs(t)-z_model(:,t))./sigma_criterion).^2;
         if lambda > 0
             log_P(:,t) = log(lambda/360 + (1-lambda)*exp(log_P(:,t)));
