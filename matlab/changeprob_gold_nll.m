@@ -37,8 +37,8 @@ if task ~= 1 && task ~= 2 && task ~=3; error('TASK can only be 1 (overt-criterio
 sigma_ellipse = parameters(1);
 sigma_criterion = parameters(2);
 lambda = parameters(3);
-delta1 = exp(parameters(10));
-delta2 = exp(parameters(11));
+delta1 = parameters(10)^2;
+delta2 = parameters(11)^2;
 nodes = [1, 1+delta1, delta1+delta2+1];
 hRate = parameters(12);
 nu_p = 2;
