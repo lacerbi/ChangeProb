@@ -23,7 +23,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
         % 2 - covert-criterion task
         % 3 - mixed design (overt-criterion task on every 5th trial)
     % parameters: Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
-        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec, betahyp, delta1, delta2, hRate]
+        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec, betahyp, delta1, delta2, hRate, nu_p]
     % gridSize: size of parameter grid (e.g., n or [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
@@ -46,7 +46,7 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     3/28/2017
+% Date:     4/21/2017
     
 if nargin < 2; data = []; end
 if nargin < 3; task = []; end
@@ -73,7 +73,7 @@ if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (co
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
-MaxParams = 12;
+MaxParams = 13;
 
 % Parameters to be fit
 if isempty(parameters)
@@ -118,7 +118,7 @@ else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta', 'delta1', 'delta2', 'hRate'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta', 'delta1', 'delta2', 'hRate', 'nu_p'};
 NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
@@ -134,7 +134,7 @@ fprintf('Grid for computation of the marginal likelihood has %d nodes.\n', prod(
 
 % Lower and upper parameter bounds
 if isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10; 1.01,5; 1.01,14; 0,1];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10; 1.01,5; 1.01,14; 0,1; 0,5];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -195,6 +195,8 @@ if NumParams > 0
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % distance between nodes (log of the true deltas)
             case 12
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % hazard rate
+            case 13
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % nu_p
         end
     end
 
@@ -219,7 +221,8 @@ pVec_def = 0;           % Use default probability vector
 beta_def = 0;           % Use default hyperprior, [0,0]
 delta_def = 2;          % Use default node distance
 hRate_def = .01;        % Use default hazard rate (average rate of change)
-notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def, delta_def, delta_def, hRate_def];
+nu_p_def = log(2);      % Use default nu_p (Beta(1,1))
+notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def, delta_def, delta_def, hRate_def, nu_p_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams

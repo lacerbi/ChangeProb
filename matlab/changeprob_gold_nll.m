@@ -5,7 +5,7 @@ function [nLL, rmse, p_estimate, resp_model, p_nodeWeight] = changeprob_gold_nll
 %
 % Author:   Elyse Norton
 % Email:    elyse.norton@gmail.com
-% Date:     Mar/27/2017
+% Date:     Apr/21/2017
 
 % Generate fake data and set default parameter vector
 % Parameter vector: #1 is SIGMA_ELLIPSE, #2 is SIGMA_CRITERION, #3 is LAPSE, 
@@ -41,7 +41,7 @@ delta1 = parameters(10)^2;
 delta2 = parameters(11)^2;
 nodes = [1, 1+delta1, delta1+delta2+1];
 hRate = parameters(12);
-nu_p = 2;
+nu_p = exp(parameters(13));
 numNodes = numel(nodes);
 
 %% Start loop over trials
