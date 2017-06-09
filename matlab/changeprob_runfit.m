@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     4/21/2016
+% Date:     6/9/2017
 
 if nargin < 2; fixNoise = []; end
 if nargin < 3; gridSize = []; end
@@ -23,11 +23,11 @@ Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
 
-% Job number ranges from 1 to 9106 (11 subjects x 2 tasks x 14 models + 7 subjects x 14 models = 406 + 8700)
+% Job number ranges from 1 to 12,586 (11 subjects x 2 tasks x 14 models + 7 subjects x 14 models = 406 + 12,180)
     % Note: for each jobNumber > 406 we will fit all models to a complete
     % simulated data set at once
 NdataJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels);
-NsimJobs = (Nsubjs*Ntasks*(Nmodels-3) + Nsubjs_mixed*(Nmodels-3))*Nsims;
+NsimJobs = (Nsubjs*Ntasks*Nmodels + Nsubjs_mixed*Nmodels)*Nsims;
 maxID = NdataJobs + NsimJobs;
 if jobNumber < 1 || jobNumber > maxID
     error(['Please specify a number between 1 and ' num2str(maxID) '.']);
@@ -48,22 +48,22 @@ elseif jobNumber > Nsubjs*Ntasks*Nmodels && jobNumber <= NdataJobs
 elseif jobNumber > NdataJobs
     simulatedData = 1;
     jobNumber_sim = jobNumber - NdataJobs;
-    if jobNumber_sim <= Nsubjs*Ntasks*(Nmodels-4)*Nsims % Number between 1 and 6600
+    if jobNumber_sim <= Nsubjs*Ntasks*Nmodels*Nsims % Number between 1 and 9240
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*(Nmodels-4)));
+        simNumIndex = ceil(jobNumber_sim/(Nsubjs*Ntasks*Nmodels));
         runSimNum = num2str(simNumIndex);
-        % Update job number to be between 1 and 220
-        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*(Nmodels-4))+1;
+        % Update job number to be between 1 and 308
+        jobNumber = mod(jobNumber_sim-1, Nsubjs*Ntasks*Nmodels)+1;
         % Which subject?
         subIndex = rem(jobNumber-1,Nsubjs)+1;
         runSubject = subID{subIndex};
     else
-        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*(Nmodels-4)*Nsims; % Number between 1 and 2100
+        jobNumber_mixed_sim = jobNumber_sim - Nsubjs*Ntasks*Nmodels*Nsims; % Number between 1 and 2940
         % What is the sample number (1 to 30)?
-        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*(Nmodels-4)));
+        simNumIndex = ceil(jobNumber_mixed_sim/(Nsubjs_mixed*Nmodels));
         runSimNum = num2str(simNumIndex);
         % Update job number to be between 1 and 70
-        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*(Nmodels-4))+1;
+        jobNumber_mixed = mod(jobNumber_mixed_sim-1, Nsubjs_mixed*Nmodels)+1;
         % Which subject?
         subIndex = rem(jobNumber_mixed-1,Nsubjs_mixed)+1;
         runSubject = subID_mixed{subIndex};
@@ -119,11 +119,18 @@ end
 
 if isempty(simulatedData)
     NumRunModel = 1;
+    initialRunModel = 1;
 else
-    NumRunModel = Nmodels;
+    if jobNumber < 221
+        initialRunModel = 11;
+        NumRunModel = Nmodels-initialRunModel+1;
+    else
+        initialRunModel = 1;
+        NumRunModel = Nmodels;
+    end
 end
 
-for ii = 1:NumRunModel
+for ii = initialRunModel:NumRunModel
     if isempty(simulatedData)
         SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
     else
