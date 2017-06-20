@@ -123,14 +123,14 @@ if isempty(simulatedData)
 else
     if jobNumber < 221
         initialRunModel = 11;
-        NumRunModel = Nmodels-initialRunModel+1;
+        NumRunModel = Nmodels-initialRunModel;
     else
         initialRunModel = 1;
         NumRunModel = Nmodels;
     end
 end
 
-for ii = initialRunModel:NumRunModel
+for ii = initialRunModel:(initialRunModel+NumRunModel)
     if isempty(simulatedData)
         SaveFileName = strcat(runSubject, '_', runModel, '_', taskName);
     else
