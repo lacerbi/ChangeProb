@@ -121,12 +121,22 @@ if isempty(simulatedData)
     NumRunModel = 1;
     initialRunModel = 1;
 else
-    if jobNumber < 221
-        initialRunModel = 11;
-        NumRunModel = Nmodels-initialRunModel;
+    if strcmp(taskName, 'Mixed')
+        if jobNumber_mixed < 71
+            initialRunModel = 11;
+            NumRunModel = Nmodels-initialRunModel;
+        else
+            initialRunModel = 1;
+            NumRunModel = Nmodels;
+        end
     else
-        initialRunModel = 1;
-        NumRunModel = Nmodels;
+        if jobNumber < 221
+            initialRunModel = 11;
+            NumRunModel = Nmodels-initialRunModel;
+        else
+            initialRunModel = 1;
+            NumRunModel = Nmodels;
+        end
     end
 end
 
