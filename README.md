@@ -1,6 +1,6 @@
 # Human Online Adaptation to Changes in Prior Probability
 
-This repository accompanies the preprint by Norton et al. (2018) [[1](https://github.com/lacerbi/visvest-causinf/blob/master/README.md#reference)].
+This repository accompanies the preprint by Norton et al. (2018) [[1](https://github.com/lacerbi/ChangeProb/blob/master/README.md#reference)].
 It includes human subjects' data and the code used for fitting and comparing the models reported in the paper.
 
 ## Reference
