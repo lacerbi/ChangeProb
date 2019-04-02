@@ -9,4 +9,4 @@ It includes human subjects' data and the code used for fitting and comparing the
 
 ### License
 
-This code is released under the terms of the [MIT License](https://github.com/lacerbi/visvest-causinf/blob/master/LICENSE.txt).
+This code is released under the terms of the [MIT License](https://github.com/lacerbi/ChangeProb/blob/master/LICENSE.txt).
