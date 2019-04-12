@@ -55,18 +55,32 @@ if strcmp(model, 'idealBayesian')
     prior_rl = [80, 120];
     w = 1;
     p_vec = linspace(.2, .8, 5);
+    beta_hyp = [0,0];
 elseif strcmp(model, 'subBayesian_rlprior')
     prior_rl = [max(1,floor(parameters(2)*2/3)),parameters(2)];
     w = 1;
     p_vec = linspace(.2, .8, 5);
+    beta_hyp = [0,0];
 elseif strcmp(model, 'subBayesian_conservative')
     prior_rl = [80, 120];
     w = parameters(2);
     p_vec = linspace(.2, .8, 5);
+    beta_hyp = [0,0];
 elseif strcmp(model, 'subBayesian_pVec')
     prior_rl = [80, 120];
     w = 1;
     p_vec = linspace(parameters(2), 1-parameters(2), 5);
+    beta_hyp = [0,0];
+elseif strcmp(model, 'subBayesian_betahyp')
+    prior_rl = [80, 120];
+    w = 1;
+    p_vec = linspace(.2, .8, 5);
+    beta_hyp = parameters(2)*[1,1];
+elseif strcmp(model, 'subBayesian_3param')
+    prior_rl = [max(1,floor(parameters(2)*2/3)),parameters(2)];
+    w = 1;
+    p_vec = linspace(.2, .8, 5);
+    beta_hyp = parameters(3)*[1,1];
 end
 
 %% Experiment constants
@@ -134,7 +148,7 @@ PCx = [];
 for t = 1:NumTrials
     %t
     if task == 2 || and(task == 3, mod(t,5) ~= 0); Xt = X(t,:); else Xt = []; end    
-    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,mu,sigma,task,t);
+    [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(Xt,C(t),post,Psi,Tmat,H,p_vec3,beta_hyp,mu,sigma,task,t);
     tt = nansum(post,2);
 
     % The predictive posterior is about the next trial
@@ -212,7 +226,7 @@ dataSim.score = score;
 end
 
 %--------------------------------------------------------------------------
-function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,mu,sigma,task, trial)
+function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,beta_hyp,mu,sigma,task, trial)
 %BAYESIANCPDUPDATE Bayesian online changepoint detection update
 
     %if mod(t,100) == 0
@@ -292,6 +306,10 @@ function [post,Psi,pi_post,PCxA] = bayesianOCPDupdate(X,C,post,Psi,Tmat,H,p_vec,
         Psi = bsxfun(@times, Psi, 1 - p_vec);
     end
     Psi(1,1,:) = 1;
+    Psi = bsxfun(@rdivide, Psi, sum(Psi,3));
+    
+    % Hyperprior
+    Psi(1,1,:) = exp(beta_hyp(1).*log(p_vec) + beta_hyp(2).*log(1-p_vec));
     Psi = bsxfun(@rdivide, Psi, sum(Psi,3));
     
     % 6b. Store predictive posterior over pi_t

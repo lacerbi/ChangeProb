@@ -5,7 +5,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 
 % Author:   Elyse norton
 % Email:    elyse.norton@gmail.com
-% Date:     6/9/2017
+% Date:     10/3/2017
 
 if nargin < 2; fixNoise = []; end
 if nargin < 3; gridSize = []; end
@@ -118,15 +118,27 @@ else
 end
 
 if isempty(simulatedData)
-    NumRunModel = 1;
     initialRunModel = 1;
+    NumRunModel = 1-initialRunModel;
 else
-    if jobNumber < 221
-        initialRunModel = 11;
-        NumRunModel = Nmodels-initialRunModel;
+%     initialRunModel = 1;
+%     NumRunModel = Nmodels-initialRunModel;
+    if strcmp(taskName, 'Mixed')
+        if jobNumber_mixed < 71
+            initialRunModel = 11;
+            NumRunModel = Nmodels-initialRunModel;
+        else
+            initialRunModel = 1;
+            NumRunModel = Nmodels-initialRunModel;
+        end
     else
-        initialRunModel = 1;
-        NumRunModel = Nmodels;
+        if jobNumber < 221
+            initialRunModel = 11;
+            NumRunModel = Nmodels-initialRunModel;
+        else
+            initialRunModel = 1;
+            NumRunModel = Nmodels-initialRunModel;
+        end
     end
 end
 

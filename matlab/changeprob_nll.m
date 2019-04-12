@@ -33,6 +33,9 @@ switch model
     case 5
         switch task
             case 1
+                if isempty(X)
+                    X = bsxfun(@plus, S, inputParams(1)*randn(numel(S), 5000));
+                end
                 [resp_model, logP] = RLobserver_overt_mex([inputParams(5), inputParams(2)],sigma,diff(mu),X,.5,resp_obs,score);
             case 2
                 X = bsxfun(@plus, S, inputParams(1)*randn(numel(S), 5000));
