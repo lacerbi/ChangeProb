@@ -1,19 +1,28 @@
-function [nLL, rmse, resp_model, p_estimate, post] = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X)
+function [nLL, rmse, resp_model, p_estimate, post, v_estimate] = changeprob_nll(params, idx_params, ...
+    inputParams, NumTrials, mu, sigma_s, C, S, p_true, resp_obs, task, score, model, X)
 %CHNAGEPROB_NLL Computes the negative log likelihood for the specified
 %model
 %(Documentation to be written)
+
+inputParams(idx_params) = params;
+sigma = sqrt(sigma_s^2 + inputParams(1)^2);
+v_estimate = [];
 
 switch model
     case 1
         if inputParams(7) == 0
             prior_rl = [];
-        else
+        elseif (inputParams(7) ~= 0) && (inputParams(14) == 0)
             prior_rl = [max(1,floor(inputParams(7)*2/3)),inputParams(7)];
+        else
+            prior_rl = round([inputParams(7), inputParams(7)+inputParams(14)]);
         end
         if inputParams(8) == 0
             p_vec = [];
-        else
+        elseif (inputParams(8) == 1) && (inputParams(15) == 0)
             p_vec = linspace(inputParams(8), 1-inputParams(8), 5);
+        else
+            p_vec = linspace(inputParams(8), inputParams(8)+inputParams(15), 5);
         end
         if inputParams(9) == 0
             beta_hyp = [];
@@ -53,6 +62,9 @@ switch model
         post = [];
     case 6
         [nLL, rmse, p_estimate, resp_model] = changeprob_gold_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        post = [];
+    case 7
+        [nLL, rmse, p_estimate, resp_model, v_estimate] = changeprob_behrens(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
     otherwise
         error('Cannot compute the negative log likelihood for the chosen model.');
