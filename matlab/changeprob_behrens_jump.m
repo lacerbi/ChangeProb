@@ -1,6 +1,7 @@
-function [nLL, rmse, p_estimate, resp_model, v_estimate] = changeprob_behrens(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
-%CHANGEPROB_BEHRENS Bayesian observer model adapted from Behrens et al. (2007)
+function [nLL, rmse, p_estimate, resp_model, v_estimate] = changeprob_behrens_jump(parameters, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task)
+%CHANGEPROB_BEHRENS_JUMP Bayesian observer model adapted from Behrens et al. (2007)
 %paper titled "Learning the value of information in an uncertain world"
+%assuming knowledge of jumps in probability
 % (Documentation to be written.)
 %
 % Author:   Elyse Norton
@@ -65,7 +66,7 @@ Cprev = C(1);
 % v (volatility), k (volatility's rate of change)
 
 r = linspace(0.01, 0.99, 30);
-v = linspace(log(2), log(10000), 30);
+v = linspace(log(0.01), log(0.99), 30);
 k = linspace(log(5e-4), log(20), 30);
 
 prior_r = 1/(r(end)-r(1));
@@ -112,10 +113,10 @@ for t = 2:NumTrials
     post_prob = zeros(numel(r), numel(v), numel(k));
     
     for idx_r1 = 1:numel(r)
+        r_current = r(idx_r1);
+        p_outcome = r_current^(Cprev)*(1-r_current)^(1-Cprev);
         for idx_v1 = 1:numel(v)
             for idx_k = 1:numel(k)
-                r_current = r(idx_r1);
-                p_outcome = r_current^(Cprev)*(1-r_current)^(1-Cprev);
                 post_prob(idx_r1, idx_v1, idx_k) = p_outcome*r_leaked(idx_r1, idx_v1, idx_k);
             end
         end
@@ -183,12 +184,8 @@ end
 
 function [r_trans] = r_trans_func(r_1, r_i, v_1)
 % R_TRANS_FUNC Category probability transition probability
-    a = exp(v_1) .* r_i;
-    b = exp(v_1) .* (1 - r_i);
-    logkerna = (a - 1) .* log(r_1);
-    logkernb = (b - 1) .* log(1 - r_1);
-    betaln_ab = gammaln(a) + gammaln(b) - gammaln(a + b);
-    r_trans = exp(logkerna + logkernb - betaln_ab);
+    r_unif = 1/size(r_1,1);
+    r_trans = (1 - exp(v_1)) .* (1 - (r_1 == r_i)) + exp(v_1).*r_unif;
 end
 
 end

@@ -66,6 +66,9 @@ switch model
     case 7
         [nLL, rmse, p_estimate, resp_model, v_estimate] = changeprob_behrens(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
         post = [];
+    case 8
+        [nLL, rmse, p_estimate, resp_model, v_estimate] = changeprob_behrens_jump(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, score, task);
+        post = [];
     otherwise
         error('Cannot compute the negative log likelihood for the chosen model.');
 end

@@ -60,7 +60,7 @@ if nargin < 8; simulatedData = []; end
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
 potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ...
-    'RL_criterion', 'gold', 'behrens'};
+    'RL_criterion', 'gold', 'behrens', 'behrens_jump'};
 model = find(strcmp(model, potentialModels)); % recode model to numeric value
 
 % Data struct or random seed for fake data generation
@@ -80,7 +80,7 @@ if isempty(parameters)
     parameters = zeros(1,MaxParams);    
     switch task
         case 1
-            if or(model < 3, model == 7)
+            if or(model < 3, model >= 7)
                 parameters(2) = 1;
             elseif and(model > 2, model < 6)
                 parameters([2,5]) = 1;
