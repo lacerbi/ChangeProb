@@ -88,7 +88,7 @@ if isempty(parameters)
                 parameters([2,10,11]) = 1;
             end
         case 2
-            if or(model < 3, model == 7)
+            if or(model < 3, model >= 7)
                 parameters(1) = 1;
             elseif and(model > 2, model < 6)
                 parameters([1,5]) = 1;
@@ -96,7 +96,7 @@ if isempty(parameters)
                 parameters([1,10,11]) = 1;
             end
         case 3
-            if or(model < 3, model == 7)
+            if or(model < 3, model >= 7)
                 parameters(2) = 1;
             elseif and(model > 2, model < 6)
                 parameters([2,5]) = 1;
