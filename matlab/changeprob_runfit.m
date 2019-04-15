@@ -266,7 +266,7 @@ for ii = initialRunModel:(initialRunModel+NumRunModel)
                 parameters = [1 0 0 0 0 0 1 1 1 0 0 0 0 1 1];
             end
         case 'behrens_conservative'
-            runModel = 'behrens';
+            runModel = 'behrens_jump';
             if task == 1 || task == 3
                 parameters = [0 1 0 0 0 1 0 0 0 0 0 0 0];
             else
