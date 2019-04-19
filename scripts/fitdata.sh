@@ -4,7 +4,7 @@ module purge
 #. /etc/profile.d/modules.sh
 
 # Use Intel compiler
-module load matlab/2016b
+module load matlab/2017a
 export MATLABPATH=${MATLABPATH}:${HOME}/${PROJECT}:${HOME}/MATLAB
 source /home/${USER}/MATLAB/setpath.sh
 
@@ -26,6 +26,8 @@ fi
 cat<<EOF | matlab -nodisplay
 addpath(genpath('${HOME}/MATLAB'));
 addpath(genpath('${HOME}/${PROJECT}'));
+addpath('${HOME}/bads');
+addpath('${HOME}/vbmc')
 cd('${WORKDIR}');
-changeprob_runfit(${IID},${FIXNOISE},${GRIDSIZE});
+changeprob_runfit(${IID},'${FITTYPE}',${FIXNOISE},${GRIDSIZE});
 EOF

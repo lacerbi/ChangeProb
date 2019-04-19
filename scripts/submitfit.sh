@@ -12,6 +12,8 @@ mkdir ${WORKDIR}
 cd ${WORKDIR}
 MAXID=290
 RUNTIME=24:00:00
+FITTYPE="maxlike"
+#FITTYPE="logmarglike"
 FIXNOISE="[]"
 GRIDSIZE="[]"
 
@@ -36,7 +38,7 @@ JOBNAME=${SHORTNAME}${RUN}
 
 if [ ${CLUSTER} = "Prince" ]; then
         # running on Prince
-        sbatch --verbose --array=${JOBLIST} --mail-type=FAIL --mail-user=${USER}@nyu.edu --mem=${MEM} --time=${RUNTIME} --nodes=${NODES} --ntasks-per-node=${PPN} --export=PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} --job-name=${JOBNAME} ${JOBSCRIPT}
+        sbatch --verbose --array=${JOBLIST} --mail-type=FAIL --mail-user=${USER}@nyu.edu --mem=${MEM} --time=${RUNTIME} --nodes=${NODES} --ntasks-per-node=${PPN} --export=PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FITTYPE=${FITTYPE},FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} --job-name=${JOBNAME} ${JOBSCRIPT}
 else
-	qsub -t ${JOBLIST} -q normal -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} -l ${RESOURCES} -M ${USER}@nyu.edu -N ${JOBNAME} ${JOBSCRIPT}
+	qsub -t ${JOBLIST} -q normal -v PROJECT=${PROJECT},RUN=${RUN},MAXID=$MAXID,WORKDIR=$WORKDIR,USER=$USER,FITTYPE=${FITTYPE},FIXNOISE=${FIXNOISE},GRIDSIZE=${GRIDSIZE} -l ${RESOURCES} -M ${USER}@nyu.edu -N ${JOBNAME} ${JOBSCRIPT}
 fi
