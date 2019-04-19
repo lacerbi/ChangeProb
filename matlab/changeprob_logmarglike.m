@@ -1,5 +1,5 @@
 function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds, fixNoise, simulatedData)
+    resp_obs, p_true, p_estimate, post, v_estimate] = changeprob_logmarglike(model, data, task, parameters, gridSize, paramBounds, fixNoise, simulatedData)
 
 %% CHANGEPROB_LOGMARGLIKE Log marginal likelihood for specified model
 
@@ -16,13 +16,15 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
         % 'exponential'
         % 'RL_probability'
         % 'RL_criterion'
+        % 'gold'
+        % 'behrens'
     % data: data struct from changing probability experiment
     % task: lets you choose which task to fit
         % 1 - overt-criterion task
         % 2 - covert-criterion task
         % 3 - mixed design (overt-criterion task on every 5th trial)
-    % Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
-        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec]
+    % parameters: Vector indicating the parameters to-be-fit (1 - fit, 0 - not fit)
+        % [sigma_ellipse, sigma_criterion, lapse, gamma, alpha, w, Tmax, pVec, betahyp, delta1, delta2, hRate, nu_p]
     % gridSize: size of parameter grid (e.g., n or [n x m x p])
     % paramBounds: lower and upper parameter bounds (numel(gridSize) x 2)
     % fixNoise: fix noise from measurement session (leave empty for default,
@@ -37,15 +39,14 @@ function [lmL, modelPost, nLL, rmse, fitParams, resp_model,...
     % the true probability (Note: does not apply to the RL_criterion model)
     % fitParams: best fitting model parameters computed by taking the
     % MAP of modelPost
-    % resp_model: predicted criterion
-    % resp_obs: observer's criterion
+    % resp_model: predicted response/criterion
+    % resp_obs: observer's response/criterion
     % p_true: true probability values
-    % p_estimate: model's estimate of probability (Note: does not apply to
-    % the RL_criterion model)
+    % p_estimate: model's estimate of probability
 
 % Authors:  Elyse Norton, Luigi Acerbi
 % Email:    {elyse.norton,luigi.acerbi}@gmail.com
-% Date:     1/23/2016
+% Date:     4/21/2017
     
 if nargin < 2; data = []; end
 if nargin < 3; task = []; end
@@ -59,7 +60,7 @@ if nargin < 8; simulatedData = []; end
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
 potentialModels = {'idealBayesian', 'fixed', 'exponential', 'RL_probability', ...
-    'RL_criterion'};
+    'RL_criterion', 'gold', 'behrens', 'behrens_jump'};
 model = find(strcmp(model, potentialModels)); % recode model to numeric value
 
 % Data struct or random seed for fake data generation
@@ -72,29 +73,35 @@ if task ~= 1 && task ~= 2 && task ~= 3; error('TASK can only be 1 (overt), 2 (co
 if task == 1; taskName = 'overt'; elseif task == 2; taskName = 'covert'; else taskName = 'mixed'; end
 
 NumSamples = 5000;
-MaxParams = 9;
+MaxParams = 13;
 
 % Parameters to be fit
 if isempty(parameters)
     parameters = zeros(1,MaxParams);    
     switch task
         case 1
-            if model < 3
+            if or(model < 3, model >= 7)
                 parameters(2) = 1;
-            else
+            elseif and(model > 2, model < 6)
                 parameters([2,5]) = 1;
+            else
+                parameters([2,10,11]) = 1;
             end
         case 2
-            if model < 3
+            if or(model < 3, model >= 7)
                 parameters(1) = 1;
-            else
+            elseif and(model > 2, model < 6)
                 parameters([1,5]) = 1;
+            else
+                parameters([1,10,11]) = 1;
             end
         case 3
-            if model < 3
+            if or(model < 3, model >= 7)
                 parameters(2) = 1;
-            else
+            elseif and(model > 2, model < 6)
                 parameters([2,5]) = 1;
+            else
+                parameters([2,10,11]) = 1;
             end
     end
 elseif sum(parameters) == 0
@@ -111,7 +118,7 @@ else
     if fixNoise; parameters(1) = 0; else parameters(1) = 1; end
 end
 
-paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta'};
+paramNames = {'sigma_ellipse', 'sigma_criterion', 'lambda', 'gamma', 'alpha', 'w', 'Tmax', 'pVec', 'beta', 'delta1', 'delta2', 'hRate', 'nu_p'};
 NumParams = sum(parameters);
 if NumParams > 0; fitParamNames = paramNames{logical(parameters)}; end 
 I_params = find(parameters ~= 0);
@@ -127,7 +134,7 @@ fprintf('Grid for computation of the marginal likelihood has %d nodes.\n', prod(
 
 % Lower and upper parameter bounds
 if isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10; 1.01,5; 1.01,14; 0,1; 0,5];    
     paramBounds = paramBounds_def(I_params,:);
 end
 
@@ -184,6 +191,12 @@ if NumParams > 0
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % Range for minimum probability (pVec(1))
             case 9
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % beta (hyperprior)
+            case {10, 11}
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % distance between nodes (log of the true deltas)
+            case 12
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % hazard rate
+            case 13
+                params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % nu_p
         end
     end
 
@@ -206,7 +219,10 @@ w_def     = 1;          % Default w (i.e., no bias)
 Tmax_def  = 0;          % Use default prior window
 pVec_def = 0;           % Use default probability vector
 beta_def = 0;           % Use default hyperprior, [0,0]
-notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def];
+delta_def = 2;          % Use default node distance
+hRate_def = .01;        % Use default hazard rate (average rate of change)
+nu_p_def = log(2);      % Use default nu_p (Beta(1,1))
+notFit_def = [sigma_ellipseData, sigmacriterion_def, lapse_def, gamma_def, alpha_def, w_def, Tmax_def, pVec_def, beta_def, delta_def, delta_def, hRate_def, nu_p_def];
 inputParams(I_notFit) = notFit_def(I_notFit);
 
 inputParams
@@ -240,9 +256,9 @@ for ii = 1:maxii
     if ii == 5; fprintf('Timing test: %.4g s.\n', toc(timestart)); end
     if rem(ii,500) == 0; fprintf('%.1f%%..', 100*ii/maxii); end
     % Parameters in params2fit_list are already transformed
-    inputParams(I_params) = params2fit_list(ii,:);
-    sigma = sqrt(sigma_s^2 + inputParams(1)^2);
-    nLL_mat(ii) = changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
+%     inputParams(I_params) = params2fit_list(ii,:);
+%     sigma = sqrt(sigma_s^2 + inputParams(1)^2);
+    nLL_mat(ii) = changeprob_nll(params2fit_list(ii,:), I_params, inputParams, NumTrials, mu, sigma_s, C, S, p_true, resp_obs, task, score, model, X);
 end
 fprintf('\n');
 clear params2fit_list;  % Free up some memory
@@ -266,20 +282,20 @@ modelPost = modelUpost / Z;
 % Log marginal likelihood (add back max logUpost from before)
 lmL = log(Z) + maxlogUpost;
 
-% Find the MAP (just for now; we should do better)
+% Find the MAP
 [~,linidx] = max(logUpost(:));
 [idx(1),idx(2),idx(3),idx(4),idx(5)] = ind2sub(size(logUpost),linidx);
 for iParam = 1:NumParams; bestFit_param(iParam) = params2fit(iParam,idx(iParam)); end
 
-% Transform parameters (check that this is correct)
+% Transform parameters
 fitParams = bestFit_param;
 fitParams(exp_idx) = exp(fitParams(exp_idx));
 
 % Recompute additional outputs from best fit params
-inputParams(I_params) = fitParams;
-sigma = sqrt(sigma_s^2 + inputParams(1)^2);
-[nLL,rmse,resp_model,p_estimate,post] = ...
-    changeprob_nll(inputParams, NumTrials, mu, sigma, C, S, p_true, resp_obs, task, score, model, X);
+% inputParams(I_params) = fitParams;
+% sigma = sqrt(sigma_s^2 + inputParams(1)^2);
+[nLL,rmse,resp_model,p_estimate,post, v_estimate] = ...
+    changeprob_nll(fitParams, I_params, inputParams, NumTrials, mu, sigma_s, C, S, p_true, resp_obs, task, score, model, X);
 
 %toc
 end

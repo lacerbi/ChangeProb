@@ -4,7 +4,7 @@ module purge
 #. /etc/profile.d/modules.sh
 
 # Use Intel compiler
-module load matlab
+module load matlab/2016b
 export MATLABPATH=${MATLABPATH}:${HOME}/${PROJECT}:${HOME}/MATLAB
 source /home/${USER}/MATLAB/setpath.sh
 

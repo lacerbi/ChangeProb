@@ -15,7 +15,7 @@ function [NumTrials, sigma_ellipseData, mu, sigma_s, C, S, p_true, resp, score] 
         % sigma_ellipseData: sensory noise from calibration data
         % mu: vector containing the category means [muA, muB]
         % sigma_s: std dev of the category distributions
-        % C: vector of category values (0 - A, 1 - B)
+        % C: vector of category values (1 - A, 0 - B)
         % S: vector of true stimulus orientations
         % p_true: vector containing the probability of A
         % resp: vector containing the observer's criterion setting 
