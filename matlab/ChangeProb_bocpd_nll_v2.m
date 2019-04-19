@@ -46,7 +46,8 @@ if isscalar(beta_hyp); beta_hyp = beta_hyp*[1,1]; end
 %     prior_rl = options.prior_rl;
 % else
 %end
-L = diff(prior_rl)+1;           % Number of elements
+runlength_min = prior_rl(1);
+runlength_max = prior_rl(2);
 
 % Probability states
 % if isfield(options,'p_vec') && ~isempty(options.p_vec)
@@ -107,11 +108,18 @@ end
 %% Initialize inference
 
 % Hazard function (defined only where nonzero)
-H = ones(L,1)/L;
-H = H./flipud(cumsum(flipud(H)));
+L = (ceil(runlength_max)-floor(runlength_min))+1;  % Number of elements
+rlprior = ones(L,1)/L;      % Constant changepoint prior
+
+% Trick to allow non-integer run length min and max
+frac_min = 1 - (runlength_min - floor(runlength_min));
+rlprior(1) = rlprior(1)*frac_min;
+frac_max = 1 - (ceil(runlength_max) - runlength_max);
+rlprior(end) = rlprior(end)*frac_max;
+H = rlprior(:)./flipud(cumsum(flipud(rlprior(:))));
 
 % Posterior over run lengths (from 0 to PRIOR_RL(2)-1)
-post = zeros(prior_rl(2),Nprobs);
+post = zeros(ceil(runlength_max),Nprobs);
 post(1,:) = 1;  % Change in the first trial
 post = post ./ sum(post(:));
 
@@ -157,6 +165,8 @@ end
 
 %% Compute log likelihood
 
+MIN_P = 1e-4;   % Minimum lapse/error probability
+
 % Compute predicted criterion
 pA_t = sum(bsxfun(@times, P, p_vec(:)'),2);
 pB_t = sum(bsxfun(@times, P, 1-p_vec(:)'), 2);
@@ -176,7 +186,8 @@ switch task
         end
 
         % Sum negative log likelihood
-        nLL = -nansum(log_Pz);
+        log_Pz(~isfinite(log_Pz)) = log(MIN_P/360);
+        nLL = -sum(log_Pz);
         resp_model = z_opt;
         
     case 2  % Covert-criterion task
@@ -191,8 +202,10 @@ switch task
         log_PChat = log(PChatA_bias).*(resp_obs == 1) + log(1-PChatA_bias).*(resp_obs ~= 1);
         
         % Sum negative log likelihood
+        log_PChat(~isfinite(log_PChat)) = log(MIN_P);
         nLL = -nansum(log_PChat);   
         resp_model = PChatA_bias(1:NumTrials);
+        
     case 3  % Mixed design task
         
         log_P = zeros(1, NumTrials);
@@ -202,6 +215,7 @@ switch task
         if lambda > 0
             log_P(idx_Overt) = log(lambda/360 + (1-lambda)*exp(log_P(idx_Overt)));    
         end
+        log_P(~isfinite(log_P)) = log(MIN_P/360);        
         resp_model(idx_Overt) = z_opt(idx_Overt);
         
         % Log probability of covert task responses
@@ -213,10 +227,11 @@ switch task
         PChatA_bias = lambda/2 + (1-lambda)*PChatA_bias;
         
         log_P(idx_Covert) = log(PChatA_bias).*(resp_obs(idx_Covert) == 1) + log(1-PChatA_bias).*(resp_obs(idx_Covert) ~= 1);
+        log_P(~isfinite(log_P)) = log(MIN_P);        
         resp_model(idx_Covert) = PChatA_bias;
         
         % Sum negative log likelihood
-        nLL = -nansum(log_P);
+        nLL = -sum(log_P);
 end
 
 % RMSE between predictive posterior probability and true category probability

@@ -1,5 +1,5 @@
-function [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate] = changeprob_maxlike(model,...
-    data, task, parameters, paramBounds)
+function [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate, lmL, vbmc_fit] = changeprob_maxlike(model,...
+    data, task, parameters, paramBounds, Nopts)
 %% CHANGEPROB_MAXLIKE Max log likelihood for specified model
 
 % [Documentation to be written]
@@ -8,6 +8,7 @@ if nargin < 2; data = []; end
 if nargin < 3; task = []; end
 if nargin < 4; parameters = []; end
 if nargin < 5; paramBounds = []; end
+if nargin < 6 || isempty(Nopts); Nopts = 20; end
 
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
@@ -121,21 +122,70 @@ inputParams(I_notFit) = notFit_def(I_notFit);
 % DEFINE PARAMETER BOUNDS
 LB = paramBounds(:,1);
 UB = paramBounds(:,2);
+PLB = LB + 0.1*(UB-LB);
+PUB = LB + 0.9*(UB-LB);
   
-% Initialize parameters
-params_initial = (LB+UB)/2;
+% Define function to fit
+nLL_fun = @(params2fit)changeprob_nll(params2fit(:)', I_params, inputParams, NumTrials, mu, ...
+    sigma_s, C, S, p_true, resp_obs, task, score, model, X);
 
-% Run fit
-[fitParams, ~] = fminsearchbnd(@(params2fit)changeprob_nll(params2fit, I_params, inputParams, NumTrials, mu, ...
-    sigma_s, C, S, p_true, resp_obs, task, score, model, X), params_initial, LB, UB);
+badopts = bads('defaults');             % Get default parameters for BADS
+badopts.UncertaintyHandling = 'no';     % Deterministic objective function
 
+fitParams_list = NaN(Nopts,numel(PLB));
+nLL_list = NaN(1,Nopts);
+
+% Loop over different starting points
+for iOpt = 1:Nopts
+    % Random starting point
+    params_initial = PLB + rand(size(PLB)).*(PUB - PLB);
+
+    % Run fit
+    [fitParams_list(iOpt,:),nLL_list(iOpt)] = bads(nLL_fun, params_initial(:)', LB(:)', UB(:)', PLB(:)', PUB(:)', [], badopts);
+end
+
+fitParams_list
+nLL_list
+
+[~,idx_best] = min(nLL_list);
+fitParams = fitParams_list(idx_best,:);
+    
 %% Recompute additional outputs from best fit params
 
 inputParams(I_params) = fitParams;
 % sigma = sqrt(sigma_s^2 + inputParams(1)^2);
-[nLL,~,resp_model,p_estimate,~] = ...
-    changeprob_nll(fitParams, I_params, inputParams, NumTrials, mu, sigma_s, C, S, p_true, resp_obs, task, score, model, X);
+[nLL,~,resp_model,p_estimate,~] = nLL_fun(fitParams);
 
+%% Compute estimate of marginal likelihood with VBMC
+
+logprior = -sum(log(UB - LB));  % Uniform prior
+
+% Set VBMC options (these will probably become defaults in the near future)
+vbmc_opts = vbmc('defaults');
+% vbmc_opts.Plot = 'on';
+vbmc_opts.MaxFunEvals = 100 + 50*numel(PLB);
+vbmc_opts.NSgpMaxMain = 0;
+vbmc_opts.GPStochasticStepsize = true;
+vbmc_opts.WarmupNoImproThreshold = 20 + 5*numel(PLB);
+vbmc_opts.TolStableExceptions = 2;
+vbmc_opts.TolStableIters = 10;
+vbmc_opts.WarmupCheckMax = true;
+
+Nopts = min(ceil(Nopts/2),4);
+
+for iOpt = 1:Nopts
+    [vp,elbo,elbo_sd,exitflag,output] = ...
+        vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior, fitParams(:)', ...
+            LB(:)', UB(:)', PLB(:)', PUB(:)', vbmc_opts);
+
+    % Store results
+    vbmc_fit.vps{iOpt} = vp;
+    vbmc_fit.outputs{iOpt} = output;
+end
+
+[vp,elbo,elbo_sd,exitflag] = vbmc_diagnostics(vbmc_fit.vps,vbmc_fit.outputs);
+
+lmL = elbo; % Save estimate of log marginal likelihood
 
 end
 

@@ -278,15 +278,16 @@ for ii = initialRunModel:(initialRunModel+NumRunModel)
     end
 
     if strcmp(fitType, 'maxlike')
-        [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate] = changeprob_maxlike(runModel, data, task, parameters);
+        [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate,...
+            logmargLikelihood,vbmc_fit] = changeprob_maxlike(runModel, data, task, parameters);
         rmse = [];
-        logmargLikelihood = [];
         post = [];
         modelPost = [];
         v_estimate = [];
     else
         [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
             resp_obs, p_true, p_estimate, post, v_estimate] = changeprob_logmarglike(runModel, data, task, parameters, gridSize, [], fixNoise, simulatedData);
+        vbmc_fit = [];
     end
 
     fprintf('MAP parameters:\n');
@@ -295,11 +296,11 @@ for ii = initialRunModel:(initialRunModel+NumRunModel)
     if isempty(simulatedData)
         save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
             'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', 'v_estimate', ...
-            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName');
+            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName','vbmc_fit');
     else
         save(SaveFileName, 'logmargLikelihood', 'modelPost', 'nLL', 'rmse', 'fitParams', ...
             'resp_model', 'resp_obs', 'p_true', 'p_estimate', 'post', 'v_estimate', ...
-            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'runSimNum', 'runSimModel', 'simParams');
+            'runSubject', 'runModel', 'subID', 'subIndex', 'taskName', 'vbmc_fit', 'runSimNum', 'runSimModel', 'simParams');
         fprintf('\n\n%s\n%s: Finished fit %d/%d (running time = %.2f h).\n%s\n\n', repmat('#',[1,80]), datestr(now), ii, NumRunModel, toc(startTime)/3600, repmat('#',[1,80]));       
     end
 end
