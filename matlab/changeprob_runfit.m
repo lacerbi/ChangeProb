@@ -276,6 +276,9 @@ for ii = initialRunModel:(initialRunModel+NumRunModel)
                 gridSize = 50;
             end
     end
+    
+    % Display model name, subject and task
+    fprintf('Fitting model: %s. Subject: %s (#%d). Task: %s.\n\n',runModel,runSubject,subIndex,taskName);
 
     if strcmp(fitType, 'maxlike')
         [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate,...
