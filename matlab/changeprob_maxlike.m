@@ -8,7 +8,7 @@ if nargin < 2; data = []; end
 if nargin < 3; task = []; end
 if nargin < 4; parameters = []; end
 if nargin < 5; paramBounds = []; end
-if nargin < 6 || isempty(Nopts); Nopts = 20; end
+if nargin < 6 || isempty(Nopts); Nopts = 1; end
 
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end
@@ -158,8 +158,6 @@ inputParams(I_params) = fitParams;
 
 %% Compute estimate of marginal likelihood with VBMC
 
-logprior = -sum(log(UB - LB));  % Uniform prior
-
 % Set VBMC options (these will probably become defaults in the near future)
 vbmc_opts = vbmc('defaults');
 % vbmc_opts.Plot = 'on';
@@ -171,11 +169,22 @@ vbmc_opts.TolStableExceptions = 2;
 vbmc_opts.TolStableIters = 10;
 vbmc_opts.WarmupCheckMax = true;
 
-Nopts = min(ceil(Nopts/2),4);
+% Choose starting point equal to maximum-likelihood fit, but ensure it is
+% well inside bounds
+LB_eff = LB + (PLB-LB)*0.01;
+UB_eff = UB - (UB-PUB)*0.01;
+startPoint = min(max(fitParams(:),LB_eff),UB_eff);
+
+Nopts = min(max(ceil(Nopts/2),2),10);
+
+% logprior = @(x) -sum(log(UB - LB));  % Uniform prior
+
+% Uniform prior with slight smoothing very close to the edges (needed by VBMC)
+logprior = @(x) log(msplinetrapezpdf(x,LB(:)',LB_eff(:)',UB_eff(:)',UB(:)'));
 
 for iOpt = 1:Nopts
     [vp,elbo,elbo_sd,exitflag,output] = ...
-        vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior, fitParams(:)', ...
+        vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior(params2fit(:)'), startPoint(:)', ...
             LB(:)', UB(:)', PLB(:)', PUB(:)', vbmc_opts);
 
     % Store results
@@ -183,9 +192,12 @@ for iOpt = 1:Nopts
     vbmc_fit.outputs{iOpt} = output;
 end
 
-[vp,elbo,elbo_sd,exitflag] = vbmc_diagnostics(vbmc_fit.vps,vbmc_fit.outputs);
+[exitflag,output,best] = vbmc_diagnostics(vbmc_fit.vps,vbmc_fit.outputs);
+vbmc_fit.diagnostics.exitflag = exitflag;
+vbmc_fit.diagnostics.output = output;
+vbmc_fit.diagnostics.best = best;
 
-lmL = elbo; % Save estimate of log marginal likelihood
+lmL = best.elbo; % Save estimate of log marginal likelihood
 
 end
 
