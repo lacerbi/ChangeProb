@@ -8,7 +8,7 @@ if nargin < 2; data = []; end
 if nargin < 3; task = []; end
 if nargin < 4; parameters = []; end
 if nargin < 5; paramBounds = []; end
-if nargin < 6 || isempty(Nopts); Nopts = 1; end
+if nargin < 6 || isempty(Nopts); Nopts = 20; end
 
 % Model to be fit
 if nargin < 1; error('Please indicate the model you want to fit.'); end

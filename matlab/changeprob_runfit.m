@@ -45,6 +45,7 @@ Nsubjs_mixed = numel(subID_mixed);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
+Nopts = 20;     % Number of optimization for maximum likelihood fits
 
 % Job number ranges from 1 to 15,283 (11 subjects x 2 tasks x 17 models + 7 subjects x 17 models = 374 + 119 + 14,790)
     % Note: for each jobNumber > 493 we will fit all models to a complete
@@ -282,7 +283,7 @@ for ii = initialRunModel:(initialRunModel+NumRunModel)
 
     if strcmp(fitType, 'maxlike')
         [nLL, fitParams, resp_model, resp_obs, p_true, p_estimate,...
-            logmargLikelihood,vbmc_fit] = changeprob_maxlike(runModel, data, task, parameters);
+            logmargLikelihood,vbmc_fit] = changeprob_maxlike(runModel, data, task, parameters, [], Nopts);
         rmse = [];
         post = [];
         modelPost = [];
