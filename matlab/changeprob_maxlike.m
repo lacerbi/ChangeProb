@@ -183,10 +183,17 @@ Nopts = min(max(ceil(Nopts/2),2),10);
 logprior = @(x) log(msplinetrapezpdf(x,LB(:)',LB_eff(:)',UB_eff(:)',UB(:)'));
 
 for iOpt = 1:Nopts
-    [vp,elbo,elbo_sd,exitflag,output] = ...
+    [vp,~,~,exitflag,output] = ...
         vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior(params2fit(:)'), startPoint(:)', ...
             LB(:)', UB(:)', PLB(:)', PUB(:)', vbmc_opts);
 
+    if exitflag ~= 1
+        % First attempt did not converge, retry from obtained solution
+        [vp,~,~,~,output] = ...
+            vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior(params2fit(:)'), vp, ...
+            LB(:)', UB(:)', [], [], vbmc_opts);        
+    end
+        
     % Store results
     vbmc_fit.vps{iOpt} = vp;
     vbmc_fit.outputs{iOpt} = output;
