@@ -1,5 +1,5 @@
 function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
-    resp_obs, p_true, p_estimate, post] = changeprob_runfit(jobNumber, fitType, fixNoise, gridSize)
+    resp_obs, p_true, p_estimate, post] = changeprob_runfit(jobNumber, fitType, fixNoise, gridSize, Nopts)
 %RUNFIT Runs model comparison for changing probability experiment
 %   Input:
     % jobNumber: unique model, task, data type, and subject identifier
@@ -7,7 +7,8 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
     % likelihood ('logmarglike') or max likelihood ('maxlike')
     % fixNoise: fixes the noise parameter
     % gridSize: determines the size of the grid for computing the log
-    % marginal likelihood
+    % marginal likelihood ('logmarglike' only)
+    % Nopts: # optimization runs for maximum-likelihood fits ('maxlike' only)
     
 % Output:
    % logmarglikelihood: log marginal likelihood
@@ -30,6 +31,7 @@ function [logmargLikelihood, modelPost, nLL, rmse, fitParams, resp_model,...
 if nargin < 2; fitType = 'logmarglike'; end
 if nargin < 3; fixNoise = []; end
 if nargin < 4; gridSize = []; end
+if nargin < 5; Nopts = []; end
 
 subID = {'CWG', 'EGC', 'EHN', 'ERK', 'GK', 'HHL', 'JKT', 'JYZ', 'RND', 'SML', 'SQC'};
 subID_mixed = {'CWG', 'EGC', 'EHN', 'ERK', 'HHL', 'RND', 'SML'}; % 7 of the 11 subjects also completed the mixed design experiment
@@ -45,7 +47,6 @@ Nsubjs_mixed = numel(subID_mixed);
 Nmodels = numel(models);
 Ntasks = 2;     % Overt and covert
 Nsims = 30;     % Number of simulations run for each model
-Nopts = 20;     % Number of optimization for maximum likelihood fits
 
 % Job number ranges from 1 to 15,283 (11 subjects x 2 tasks x 17 models + 7 subjects x 17 models = 374 + 119 + 14,790)
     % Note: for each jobNumber > 493 we will fit all models to a complete
