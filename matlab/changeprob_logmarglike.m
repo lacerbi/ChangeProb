@@ -177,6 +177,8 @@ if NumParams > 0
         switch I_params(iParam)
             case {1, 2}
                 params2fit(iParam,:) = log(linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam))); % sigma_noise
+                % Edit: should have been the following to place a uniform prior in log space:
+                % params2fit(iParam,:) = linspace(log(paramBounds(iParam,1)), log(paramBounds(iParam,2)), gridSize(iParam))); % sigma_noise
             case 3
                 params2fit(iParam,:) = linspace(paramBounds(iParam,1), paramBounds(iParam,2), gridSize(iParam)); % lambda
             case 4
@@ -240,11 +242,18 @@ end
 
 %% Choose priors - start with uniformative priors for all parameters
     % These will be uniform for all priors since we took the log of the
-    % sigma parameters
+    % sigma parameters (edit: actually in the end we are using uniform
+    % priors for all parameters)
     
 % Uniform prior for all parameters
 prior = 1/prod(params2fit(:,end) - params2fit(:,1));
 logprior = log(prior);
+
+% Edit: Note that since we are using uniform priors also for SIGMA against
+% our original intentions (but we took the log above), we need then to 
+% apply a correction to the log marginal likelihood which turns out to be 
+% log(log(30) - log(1)) - (log(30)-log(1)) = -2.1771
+% for each SIGMA parameter activated in the model.
 
 %% Compute the negative log likelihood for all parameter sets
 
