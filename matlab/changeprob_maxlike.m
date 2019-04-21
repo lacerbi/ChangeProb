@@ -168,7 +168,7 @@ vbmc_opts.WarmupNoImproThreshold = 20 + 5*numel(PLB);
 vbmc_opts.TolStableExceptions = 2;
 vbmc_opts.TolStableIters = 10;
 vbmc_opts.WarmupCheckMax = true;
-vbmc_opts.Retry = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
+vbmc_opts.RetryMaxFunEvals = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is
 % well inside bounds
