@@ -160,14 +160,14 @@ inputParams(I_params) = fitParams;
 
 % Set VBMC options (these will probably become defaults in the near future)
 vbmc_opts = vbmc('defaults');
-% vbmc_opts.Plot = 'on';
-vbmc_opts.MaxFunEvals = 100 + 50*numel(PLB);
-vbmc_opts.NSgpMaxMain = 0;
-vbmc_opts.GPStochasticStepsize = true;
-vbmc_opts.WarmupNoImproThreshold = 20 + 5*numel(PLB);
+ vbmc_opts.Plot = 'on';
 vbmc_opts.TolStableExceptions = 2;
 vbmc_opts.TolStableIters = 10;
+vbmc_opts.WarmupNoImproThreshold = 20 + 5*numel(PLB);
 vbmc_opts.WarmupCheckMax = true;
+
+vbmc_opts.NSgpMaxMain = 0;
+vbmc_opts.GPStochasticStepsize = true;
 vbmc_opts.RetryMaxFunEvals = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is

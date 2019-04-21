@@ -1,4 +1,4 @@
-function [lmL_Overt,lmL_Covert,initials,models,task] = changeprob_readFit(fitType,initials,models,task,dataPath)
+function [output,initials,models,task] = changeprob_readFit(fitType,initials,models,task,dataPath)
 %% CHANGEPROB_READFIT Read model fits for each observer, model, and task specified
     
     % Input
@@ -11,9 +11,16 @@ function [lmL_Overt,lmL_Covert,initials,models,task] = changeprob_readFit(fitTyp
         % is current directory
 
     % Output
-        % lmL_Overt (NxM): log marginal likelihood score for each observer and model
-        % lmL_Covert (NxM): log marginal likelihood scores for each observer and model
+        % output: struct that contains model comparison metrics for each
+        % observer (row) and model (column)
 
+% Example usage:
+% output = changeprob_readFit('maxlike');
+% metric = 'lmL'; task = 'Overt'; 
+% m = output.([metric '_' task])(:,5) - output.([metric '_' task])(:,15); 
+% [mean(m), stderr(m)], [h,p,~,stats] = ttest(m)
+
+        
 %% Check inputs
 
     if nargin < 1 || isempty(fitType)   % Default - read LML files
@@ -60,8 +67,11 @@ function [lmL_Overt,lmL_Covert,initials,models,task] = changeprob_readFit(fitTyp
     currentDir = pwd;
 
     % Plot model fits vs. observer data
-    lmL_Overt = NaN(numInitials, numModels);
-    lmL_Covert = lmL_Overt;
+    output.lmL_Overt = NaN(numInitials, numModels);
+    output.lmL_Covert = output.lmL_Overt;
+    output.maxLL_Overt = output.lmL_Overt;
+    output.maxLL_Covert = output.lmL_Overt;
+    
     
     for ii = 1:numTasks        
         for i = 1:numModels
@@ -70,10 +80,12 @@ function [lmL_Overt,lmL_Covert,initials,models,task] = changeprob_readFit(fitTyp
                 filename = [initials{j}, '_', models{i}, '_', taskNames{task(ii)} fileSuffix '.mat'];
                 if exist(filename,'file')
                     fit = load(filename);
-                    switch task(ii)
-                        case 1; lmL_Overt(j,i) = fit.logmargLikelihood;
-                        case 2; lmL_Covert(j,i) = fit.logmargLikelihood;
-                    end
+                    Nparams = numel(fit.fitParams);
+                    Ntrials = numel(fit.resp_obs);
+                    output.(['lmL_' taskNames{task(ii)}])(j,i) = fit.logmargLikelihood;
+                    output.(['maxLL_' taskNames{task(ii)}])(j,i) = -fit.nLL;
+                    output.(['AIC_' taskNames{task(ii)}])(j,i) = 2*fit.nLL + 2*Nparams;
+                    output.(['BIC_' taskNames{task(ii)}])(j,i) = 2*fit.nLL + log(Ntrials)*Nparams;
                 end
             end
         end        
