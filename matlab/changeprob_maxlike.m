@@ -168,6 +168,7 @@ vbmc_opts.WarmupNoImproThreshold = 20 + 5*numel(PLB);
 vbmc_opts.TolStableExceptions = 2;
 vbmc_opts.TolStableIters = 10;
 vbmc_opts.WarmupCheckMax = true;
+vbmc_opts.Retry = true;     % Retry variational optimization if first fails
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is
 % well inside bounds
@@ -183,16 +184,9 @@ Nopts = min(max(ceil(Nopts/2),2),10);
 logprior = @(x) log(msplinetrapezpdf(x,LB(:)',LB_eff(:)',UB_eff(:)',UB(:)'));
 
 for iOpt = 1:Nopts
-    [vp,~,~,exitflag,output] = ...
+    [vp,~,~,~,output] = ...
         vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior(params2fit(:)'), startPoint(:)', ...
             LB(:)', UB(:)', PLB(:)', PUB(:)', vbmc_opts);
-
-    if exitflag ~= 1
-        % First attempt did not converge, retry from obtained solution
-        [vp,~,~,~,output] = ...
-            vbmc(@(params2fit) -nLL_fun(params2fit(:)')+logprior(params2fit(:)'), vp, ...
-            LB(:)', UB(:)', [], [], vbmc_opts);        
-    end
         
     % Store results
     vbmc_fit.vps{iOpt} = vp;
