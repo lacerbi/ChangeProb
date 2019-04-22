@@ -193,12 +193,17 @@ for iOpt = 1:Nopts
     vbmc_fit.outputs{iOpt} = output;
 end
 
-[exitflag,output,best] = vbmc_diagnostics(vbmc_fit.vps,vbmc_fit.outputs);
+[exitflag,best,idx_best,stats] = vbmc_diagnostics(vbmc_fit.vps,vbmc_fit.outputs);
 vbmc_fit.diagnostics.exitflag = exitflag;
-vbmc_fit.diagnostics.output = output;
+vbmc_fit.diagnostics.stats = stats;
 vbmc_fit.diagnostics.best = best;
+vbmc_fit.diagnostics.idx_best = idx_best;
 
-lmL = best.elbo; % Save estimate of log marginal likelihood
+if ~isempty(best)
+    lmL = best.elbo; % Save estimate of log marginal likelihood
+else
+    lmL = NaN;       % Run failed!
+end
 
 end
 
