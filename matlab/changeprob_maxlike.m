@@ -74,7 +74,8 @@ I_params = find(parameters ~= 0);
 
 % Lower and upper parameter bounds
 if isempty(paramBounds)    
-    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; 0,.5; 0,10; 1.01,5; 1.01,14; 0,1; 0,5; 2,200; 0,.5];    
+    paramBounds_def = [1,30; 1,30; 0,0.1; -Inf,Inf; 0,1; 0,1; 2,200; ...
+        1e-6,0.5-1e-6; 0,10; 1.01,5; 1.01,14; 0,1; 0,5; 1,200; 1e-6,0.5-1e-6];    
     paramBounds = paramBounds_def(I_params,:);
 end
 

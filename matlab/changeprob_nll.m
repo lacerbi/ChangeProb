@@ -13,16 +13,16 @@ switch model
         if inputParams(7) == 0
             prior_rl = [];
         elseif (inputParams(7) ~= 0) && (inputParams(14) == 0)
-            prior_rl = [max(1,floor(inputParams(7)*2/3)),inputParams(7)];
+            prior_rl = [max(1,inputParams(7)*2/3),inputParams(7)];
         else
-            prior_rl = round([inputParams(7), inputParams(7)+inputParams(14)]);
+            prior_rl = [(inputParams(7)-1), inputParams(7)-1+inputParams(14)];
         end
         if inputParams(8) == 0
             p_vec = [];
         elseif (inputParams(8) == 1) && (inputParams(15) == 0)
             p_vec = linspace(inputParams(8), 1-inputParams(8), 5);
         else
-            p_vec = linspace(inputParams(8), inputParams(8)+inputParams(15), 5);
+            p_vec = linspace(inputParams(8), 0.5+inputParams(15), 5);
         end
         if inputParams(9) == 0
             beta_hyp = [];
