@@ -166,7 +166,7 @@ vbmc_opts = vbmc('defaults');
 vbmc_opts.NSgpMaxMain = 0;
 vbmc_opts.SGDStepSize = 0.005;
 vbmc_opts.RetryMaxFunEvals = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
-vbmc_opts.gpMeanFun = 'negquadse';
+% vbmc_opts.gpMeanFun = 'negquadse';
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is
 % well inside bounds
