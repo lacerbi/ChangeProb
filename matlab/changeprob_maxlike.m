@@ -164,9 +164,9 @@ vbmc_opts = vbmc('defaults');
 % vbmc_opts.Plot = 'on';
 
 vbmc_opts.NSgpMaxMain = 0;
-% vbmc_opts.GPStochasticStepsize = true;
 vbmc_opts.SGDStepSize = 1e-3;
 vbmc_opts.RetryMaxFunEvals = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
+vbmc_opts.gpMeanFun = 'negquadse';
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is
 % well inside bounds
