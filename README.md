@@ -1,11 +1,11 @@
 # Human Online Adaptation to Changes in Prior Probability
 
-This repository accompanies the preprint by Norton et al. (2018) [[1](https://github.com/lacerbi/ChangeProb/blob/master/README.md#reference)].
+This repository accompanies the article by Norton et al. (2019) [[1](https://github.com/lacerbi/ChangeProb/blob/master/README.md#reference)].
 It includes human subjects' data and the code used for fitting and comparing the models reported in the paper.
 
 ## Reference
 
-1. Norton, E.H., Acerbi, L., Ma, W.J. & Landy, M.S. (2018). Human Online Adaptation to Changes in Prior Probability, *bioRxiv preprint* ([link](https://www.biorxiv.org/content/10.1101/483842v2))
+1. Norton EH, Acerbi L, Ma WJ, Landy MS (2019) Human online adaptation to changes in prior probability. *PLoS Comput Biol* 15(7): e1006681. https://doi.org/10.1371/journal.pcbi.1006681 ([link](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1006681))
 
 ### License
 
