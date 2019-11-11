@@ -79,6 +79,11 @@ if isempty(paramBounds)
     paramBounds = paramBounds_def(I_params,:);
 end
 
+% Integer parameters (used only by VBMC)
+paramInteger = false(1,numel(paramNames));
+paramInteger([7,14]) = true;
+paramInteger = paramInteger(I_params);
+
 if NumParams ~= size(paramBounds,1)
     error('Please specify parameter bounds for each parameter to be fit.');
 end
@@ -164,9 +169,14 @@ vbmc_opts = vbmc('defaults');
 % vbmc_opts.Plot = 'on';
 
 vbmc_opts.NSgpMaxMain = 0;
-vbmc_opts.SGDStepSize = 0.005;
 vbmc_opts.RetryMaxFunEvals = vbmc_opts.MaxFunEvals;     % Retry variational optimization if first fails
-% vbmc_opts.gpMeanFun = 'negquadse';
+vbmc_opts.UncertaintyHandling = true;
+vbmc_opts.gpOutwarpFun = @outwarp_negpowc1;
+vbmc_opts.IntegerVars = find(paramInteger);             % Set integer variables
+
+% Change bounds for integer variables
+LB(vbmc_opts.IntegerVars) = LB(vbmc_opts.IntegerVars) - 0.5;
+UB(vbmc_opts.IntegerVars) = UB(vbmc_opts.IntegerVars) + 0.5;
 
 % Choose starting point equal to maximum-likelihood fit, but ensure it is
 % well inside bounds
